@@ -270,6 +270,23 @@ class ApiService {
         }
     }
 
+    async deleteMedia(mediaId: string) {
+        const credentials = this.getCredentials();
+        const response = await fetch(`/api/media/${mediaId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(credentials),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to delete media: ${response.statusText}`);
+        }
+
+        return response.json();
+    }
+
     clearCredentials() {
         this.userId = null;
         this.password = null;

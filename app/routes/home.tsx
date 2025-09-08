@@ -287,6 +287,7 @@ export default function Home() {
   const emojiButtonRefs = useRef<{[key: string]: HTMLButtonElement | null}>({});
   const [showAddParticipant, setShowAddParticipant] = useState<string>("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<{url: string; uploader?: {id: string; name: string; avatar: string}; eventId?: string; dayId?: string} | null>(null);
   const [addParticipantPosition, setAddParticipantPosition] = useState<{top: number, left: number} | null>(null);
   const addParticipantButtonRefs = useRef<{[key: string]: HTMLButtonElement | null}>({});
   const [showDatePicker, setShowDatePicker] = useState<string>("");
@@ -641,7 +642,7 @@ export default function Home() {
         }
       });
       
-      // Update UI immediately with temporary URLs
+      // Update UI immediately with temporary URLs (as strings for temp display)
       setTripDays(prev => prev.map(day => 
         day.id === dayId 
           ? { 
@@ -666,9 +667,23 @@ export default function Home() {
       console.log('Backend upload result:', result);
       
       if (result.success) {
-        // Replace temporary URLs with real ones
-        const realPhotos = result.files.filter((f: any) => f.type === 'photo').map((f: any) => f.url);
-        const realVideos = result.files.filter((f: any) => f.type === 'video').map((f: any) => f.url);
+        // Get current user info for uploader avatar
+        const currentUser = api.getCredentials();
+        const uploaderInfo = {
+          id: currentUser.userId || 'unknown',
+          name: currentUser.userId || 'Unknown User',
+          avatar: `https://picsum.photos/80/80?random=${(currentUser.userId || 'unknown').length}`
+        };
+        
+        // Replace temporary URLs with MediaItem objects
+        const realPhotos = result.files.filter((f: any) => f.type === 'photo').map((f: any) => ({
+          url: f.url,
+          uploader: uploaderInfo
+        }));
+        const realVideos = result.files.filter((f: any) => f.type === 'video').map((f: any) => ({
+          url: f.url,
+          uploader: uploaderInfo
+        }));
         
         setTripDays(prev => prev.map(day => 
           day.id === dayId 
@@ -679,11 +694,15 @@ export default function Home() {
                     ? { 
                         ...event,
                         photos: [
-                          ...event.photos.filter(url => !tempPhotos.includes(url)),
+                          ...event.photos.filter(photo => 
+                            typeof photo === 'string' ? !tempPhotos.includes(photo) : true
+                          ),
                           ...realPhotos
                         ],
                         videos: [
-                          ...event.videos.filter(url => !tempVideos.includes(url)),
+                          ...event.videos.filter(video => 
+                            typeof video === 'string' ? !tempVideos.includes(video) : true
+                          ),
                           ...realVideos
                         ]
                       }
@@ -702,6 +721,54 @@ export default function Home() {
       
       // If upload fails, we could optionally remove the temporary URLs
       // or leave them as a fallback for offline viewing
+    }
+  };
+
+  const handleDeleteMedia = async (dayId?: string, eventId?: string, mediaUrl?: string) => {
+    // Use passed parameters or fallback to selectedMedia
+    const targetDayId = dayId || selectedMedia?.dayId;
+    const targetEventId = eventId || selectedMedia?.eventId;
+    const targetUrl = mediaUrl || selectedMedia?.url;
+    
+    if (!targetDayId || !targetEventId || !targetUrl) return;
+    
+    try {
+      // Extract media ID from URL
+      const mediaId = targetUrl.split('/').pop();
+      if (!mediaId) return;
+      
+      await api.deleteMedia(mediaId);
+      
+      // Remove from UI
+      setTripDays(prev => prev.map(day => 
+        day.id === targetDayId 
+          ? {
+              ...day,
+              events: day.events.map(event => 
+                event.id === targetEventId 
+                  ? {
+                      ...event,
+                      photos: event.photos.filter(photo => 
+                        (typeof photo === 'string' ? photo : photo.url) !== targetUrl
+                      ),
+                      videos: event.videos.filter(video => 
+                        (typeof video === 'string' ? video : video.url) !== targetUrl
+                      )
+                    }
+                  : event
+              )
+            }
+          : day
+      ));
+      
+      // Close modal if it was open
+      if (selectedImage === targetUrl) {
+        setSelectedImage(null);
+        setSelectedMedia(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete media:', error);
+      setError('Failed to delete media: ' + (error as Error).message);
     }
   };
 
@@ -767,16 +834,31 @@ export default function Home() {
 
   const saveDayEdit = async (dayId: string) => {
     try {
+      console.log('Saving day edit:', { dayId, title: editDayTitle, date: editDayDate });
+      
+      // Validate inputs
+      if (!editDayTitle.trim()) {
+        setError('Day title cannot be empty');
+        return;
+      }
+      
+      if (!editDayDate) {
+        setError('Please select a date');
+        return;
+      }
+      
       await api.updateTripDay(dayId, {
-        title: editDayTitle,
+        title: editDayTitle.trim(),
         date: editDayDate
       });
+      
+      console.log('Day update successful');
       
       // Update local state and reorder chronologically if date changed
       setTripDays(prev => {
         const updatedDays = prev.map(day => 
           day.id === dayId 
-            ? { ...day, title: editDayTitle, date: editDayDate }
+            ? { ...day, title: editDayTitle.trim(), date: editDayDate }
             : day
         );
         
@@ -791,9 +873,10 @@ export default function Home() {
       setEditingDay("");
       setEditDayTitle("");
       setEditDayDate("");
+      setError(""); // Clear any previous errors
     } catch (error) {
       console.error('Failed to update day:', error);
-      setError('Failed to update day');
+      setError('Failed to update day: ' + (error as Error).message);
     }
   };
 
@@ -1797,55 +1880,93 @@ export default function Home() {
                       {/* Event photos grid */}
                       <div className="columns-1 sm:columns-2 gap-3 space-y-3 mb-4 relative" style={{columnFill: 'balance', zIndex: 0}}>
                         {event.photos.map((photo, index) => (
-                          <div key={index} className="break-inside-avoid mb-3 bg-white/40 backdrop-blur-sm rounded-2xl overflow-hidden group shadow-sm border border-stone-forest/30 relative">
+                          <div key={index} className="break-inside-avoid mb-3 rounded-2xl overflow-hidden group shadow-sm relative">
                             <img
                               src={typeof photo === 'string' ? photo : photo.url}
                               alt={`${event.name} photo ${index + 1}`}
-                              className="w-full h-auto object-contain hover:scale-105 transition-transform cursor-pointer"
+                              className="w-full h-auto object-contain hover:scale-105 transition-transform cursor-pointer block bg-white/40 backdrop-blur-sm border border-stone-forest/30 rounded-2xl"
                               loading="lazy"
                               decoding="async"
-                              onClick={() => setSelectedImage(typeof photo === 'string' ? photo : photo.url)}
-                              style={{ 
-                                maxWidth: '100%',
-                                height: 'auto',
-                                aspectRatio: 'auto'
+                              onClick={() => {
+                                const url = typeof photo === 'string' ? photo : photo.url;
+                                setSelectedImage(url);
+                                setSelectedMedia(typeof photo === 'object' ? {
+                                  url,
+                                  uploader: photo.uploader,
+                                  eventId: event.id,
+                                  dayId: day.id
+                                } : {url});
                               }}
                             />
                             {typeof photo === 'object' && photo.uploader && (
-                              <div className="absolute top-2 left-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm">
-                                <img
-                                  src={photo.uploader.avatar}
-                                  alt={photo.uploader.name}
-                                  className="w-full h-full object-cover"
-                                  title={`Uploaded by ${photo.uploader.name}`}
-                                />
-                              </div>
+                              <>
+                                <div className="absolute top-2 left-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm">
+                                  <img
+                                    src={photo.uploader.avatar}
+                                    alt={photo.uploader.name}
+                                    className="w-full h-full object-cover"
+                                    title={`Uploaded by ${photo.uploader.name}`}
+                                  />
+                                </div>
+                                {editingEvent === event.id && api.getCredentials().userId === photo.uploader.id && (
+                                  <div className="absolute top-2 right-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm opacity-0 group-hover:opacity-100">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteMedia(day.id, event.id, typeof photo === 'string' ? photo : photo.url);
+                                      }}
+                                      className="w-full h-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-colors"
+                                      title="Delete photo"
+                                    >
+                                      <span className="text-xs font-bold">×</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </>
                             )}
                           </div>
                         ))}
                         
                         {event.videos.map((video, index) => (
-                          <div key={`video-${index}`} className="break-inside-avoid mb-3 aspect-video bg-white/40 backdrop-blur-sm rounded-2xl overflow-hidden relative group shadow-sm border border-stone-forest/30">
-                            <video
-                              src={typeof video === 'string' ? video : video.url}
-                              className="w-full object-cover"
-                              poster={event.photos[0] ? (typeof event.photos[0] === 'string' ? event.photos[0] : event.photos[0].url) : undefined}
-                            />
-                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                              <div className="w-6 h-6 bg-white/90 rounded-full flex items-center justify-center shadow-sm">
-                                <div className="w-0 h-0 border-l-[6px] border-l-stone-700 border-t-[4px] border-b-[4px] border-t-transparent border-b-transparent ml-0.5"></div>
+                          <div key={`video-${index}`} className="break-inside-avoid mb-3 aspect-video bg-white/40 backdrop-blur-sm rounded-2xl overflow-hidden group shadow-sm border border-stone-forest/30">
+                            <div className="relative w-full h-full">
+                              <video
+                                src={typeof video === 'string' ? video : video.url}
+                                className="w-full h-full object-cover"
+                                poster={event.photos[0] ? (typeof event.photos[0] === 'string' ? event.photos[0] : event.photos[0].url) : undefined}
+                              />
+                              <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                                <div className="w-6 h-6 bg-white/90 rounded-full flex items-center justify-center shadow-sm">
+                                  <div className="w-0 h-0 border-l-[6px] border-l-stone-700 border-t-[4px] border-b-[4px] border-t-transparent border-b-transparent ml-0.5"></div>
+                                </div>
                               </div>
+                              {typeof video === 'object' && video.uploader && (
+                                <>
+                                  <div className="absolute top-2 left-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm">
+                                    <img
+                                      src={video.uploader.avatar}
+                                      alt={video.uploader.name}
+                                      className="w-full h-full object-cover"
+                                      title={`Uploaded by ${video.uploader.name}`}
+                                    />
+                                  </div>
+                                  {editingEvent === event.id && api.getCredentials().userId === video.uploader.id && (
+                                    <div className="absolute top-2 right-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm opacity-0 group-hover:opacity-100">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteMedia(day.id, event.id, typeof video === 'string' ? video : video.url);
+                                        }}
+                                        className="w-full h-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-colors"
+                                        title="Delete video"
+                                      >
+                                        <span className="text-xs font-bold">×</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                </>
+                              )}
                             </div>
-                            {typeof video === 'object' && video.uploader && (
-                              <div className="absolute top-2 left-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm">
-                                <img
-                                  src={video.uploader.avatar}
-                                  alt={video.uploader.name}
-                                  className="w-full h-full object-cover"
-                                  title={`Uploaded by ${video.uploader.name}`}
-                                />
-                              </div>
-                            )}
                           </div>
                         ))}
                         
@@ -2151,7 +2272,10 @@ export default function Home() {
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => setSelectedImage(null)}
+              onClick={() => {
+                setSelectedImage(null);
+                setSelectedMedia(null);
+              }}
               className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
             >
               ×

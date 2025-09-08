@@ -753,6 +753,80 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
             }
         }
         
+        // Delete media
+        if (url.pathname.match(/\/api\/media\/([^\/]+)$/) && request.method === 'DELETE') {
+            const mediaId = url.pathname.split('/')[3];
+            const { userId, password } = await request.json();
+            const user = await authenticate(userId, password, env);
+            
+            if (!user) {
+                return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+                    status: 401, 
+                    headers: corsHeaders
+                });
+            }
+
+            try {
+                // Get media info to check uploader and get R2 key
+                const mediaInfo = await env.DB.prepare(`
+                    SELECT em.*, e.id as event_id, td.album_id
+                    FROM event_media em
+                    JOIN events e ON em.event_id = e.id
+                    JOIN trip_days td ON e.trip_day_id = td.id
+                    WHERE em.id = ?
+                `).bind(mediaId).first();
+                
+                if (!mediaInfo) {
+                    return new Response(JSON.stringify({ error: 'Media not found' }), { 
+                        status: 404, 
+                        headers: corsHeaders
+                    });
+                }
+                
+                // Check if user is the uploader
+                if ((mediaInfo as any).uploaded_by !== user.userId) {
+                    return new Response(JSON.stringify({ error: 'Not authorized to delete this media' }), { 
+                        status: 403, 
+                        headers: corsHeaders
+                    });
+                }
+                
+                // Reconstruct R2 key and delete from R2
+                const mediaType = (mediaInfo as any).media_type === 'video' ? 'videos' : 'photos';
+                const albumId = (mediaInfo as any).album_id;
+                const eventId = (mediaInfo as any).event_id;
+                const idParts = mediaId.replace('media-', '');
+                
+                // Find the R2 object to delete
+                const r2Prefix = `albums/${albumId}/media/${mediaType}/${eventId}/`;
+                const objects = await env.BUCKET.list({ prefix: r2Prefix });
+                const matchingObject = objects.objects.find(obj => {
+                    const filename = obj.key.split('/').pop() || '';
+                    const filenameWithoutExt = filename.split('.')[0];
+                    return filenameWithoutExt === idParts;
+                });
+                
+                if (matchingObject) {
+                    await env.BUCKET.delete(matchingObject.key);
+                    console.log('Deleted from R2:', matchingObject.key);
+                }
+                
+                // Delete from database
+                await env.DB.prepare('DELETE FROM event_media WHERE id = ?').bind(mediaId).run();
+                
+                return new Response(JSON.stringify({ success: true }), {
+                    headers: corsHeaders
+                });
+                
+            } catch (error) {
+                console.error('Error deleting media:', error);
+                return new Response(JSON.stringify({ error: 'Failed to delete media' }), { 
+                    status: 500, 
+                    headers: corsHeaders
+                });
+            }
+        }
+        
         return new Response(JSON.stringify({ error: 'Not found' }), { 
             status: 404, 
             headers: corsHeaders 
