@@ -287,11 +287,12 @@ export default function Home() {
   const emojiButtonRefs = useRef<{[key: string]: HTMLButtonElement | null}>({});
   const [showAddParticipant, setShowAddParticipant] = useState<string>("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [selectedMedia, setSelectedMedia] = useState<{url: string; uploader?: {id: string; name: string; avatar: string}; eventId?: string; dayId?: string} | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<{url: string; uploader?: {id: string; name: string; avatar: string}; eventId?: string; dayId?: string; type?: 'photo' | 'video'} | null>(null);
   const [addParticipantPosition, setAddParticipantPosition] = useState<{top: number, left: number} | null>(null);
   const addParticipantButtonRefs = useRef<{[key: string]: HTMLButtonElement | null}>({});
   const [showDatePicker, setShowDatePicker] = useState<string>("");
   const [datePickerPosition, setDatePickerPosition] = useState<{top: number, left: number} | null>(null);
+  const [datePickerMonth, setDatePickerMonth] = useState<{year: number, month: number}>({ year: new Date().getFullYear(), month: new Date().getMonth() });
   const datePickerButtonRefs = useRef<{[key: string]: HTMLButtonElement | null}>({});
   const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState<boolean>(false);
@@ -622,6 +623,54 @@ export default function Home() {
       </div>
     );
   }
+
+  // Get unique participants from a day's events
+  const getDayParticipants = (day: any) => {
+    const uniqueParticipants = new Map();
+    
+    day.events.forEach((event: any) => {
+      event.participants.forEach((participant: any) => {
+        uniqueParticipants.set(participant.id, participant);
+      });
+    });
+    
+    return Array.from(uniqueParticipants.values());
+  };
+
+  // Get random highlights from all event media
+  const getRandomHighlights = () => {
+    const allMedia: Array<{url: string; uploader?: any; eventName: string; dayTitle: string; type: 'photo' | 'video'}> = [];
+    
+    tripDays.forEach(day => {
+      day.events.forEach(event => {
+        // Add photos
+        event.photos.forEach(photo => {
+          allMedia.push({
+            url: typeof photo === 'string' ? photo : photo.url,
+            uploader: typeof photo === 'object' ? photo.uploader : undefined,
+            eventName: event.name,
+            dayTitle: day.title,
+            type: 'photo'
+          });
+        });
+        
+        // Add videos
+        event.videos.forEach(video => {
+          allMedia.push({
+            url: typeof video === 'string' ? video : video.url,
+            uploader: typeof video === 'object' ? video.uploader : undefined,
+            eventName: event.name,
+            dayTitle: day.title,
+            type: 'video'
+          });
+        });
+      });
+    });
+    
+    // Shuffle array and take first 4
+    const shuffled = [...allMedia].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 4);
+  };
 
   const addPhotosToEvent = async (dayId: string, eventId: string, files: FileList) => {
     console.log('addPhotosToEvent called with:', { dayId, eventId, filesCount: files.length });
@@ -1072,12 +1121,25 @@ export default function Home() {
     setShowAddParticipant(eventId);
   };
 
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setDatePickerMonth(prev => {
+      const newMonth = direction === 'next' ? prev.month + 1 : prev.month - 1;
+      const newYear = prev.year + Math.floor(newMonth / 12) - Math.floor((newMonth < 0 ? -1 : 0));
+      const adjustedMonth = ((newMonth % 12) + 12) % 12;
+      return { year: newYear, month: adjustedMonth };
+    });
+  };
+
   const openDatePicker = (dayId: string) => {
     if (showDatePicker === dayId) {
       setShowDatePicker("");
       setDatePickerPosition(null);
       return;
     }
+    
+    // Reset to current month when opening
+    const now = new Date();
+    setDatePickerMonth({ year: now.getFullYear(), month: now.getMonth() });
     
     const button = datePickerButtonRefs.current[dayId];
     if (button) {
@@ -1420,51 +1482,56 @@ export default function Home() {
             <div className="border-t border-stone-forest/30 pt-6">
             <div className="flex gap-8">
               {/* Featured Photos */}
-              <div className="flex-1">
+              <div className="flex-[2]">
                 <h3 className="text-lg font-display font-medium text-stone-900 mb-3">Trip Highlights</h3>
                 <div className="columns-1 sm:columns-2 gap-3 space-y-3" style={{columnFill: 'balance'}}>
-                  {tripDays.map((day) => (
-                    <div key={day.id} className="break-inside-avoid mb-3 bg-white/50 backdrop-blur-sm rounded-2xl overflow-hidden hover:scale-105 transition-all cursor-pointer shadow-sm border border-stone-forest/30">
-                      <img
-                        src={day.heroPhoto}
-                        alt={`${day.title} highlight`}
-                        className="w-full h-auto object-contain"
-                        loading="lazy"
-                        decoding="async"
-                        onClick={() => setSelectedImage(day.heroPhoto)}
-                        style={{ 
-                          maxWidth: '100%',
-                          height: 'auto',
-                          aspectRatio: 'auto'
-                        }}
-                      />
-                    </div>
-                  ))}
-                  {/* Add more featured photos from events */}
-                  {tripDays.slice(0, 2).map((day) => 
-                    day.events.slice(0, 1).map((event) => (
-                      <div key={`${day.id}-${event.id}`} className="break-inside-avoid mb-3 bg-white/50 backdrop-blur-sm rounded-2xl overflow-hidden hover:scale-105 transition-all cursor-pointer shadow-sm border border-stone-forest/30">
-                        <img
-                          src={event.photos[0]}
-                          alt={`${event.name} highlight`}
+                  {getRandomHighlights().map((media, index) => (
+                    <div key={`highlight-${index}`} className="break-inside-avoid mb-3 bg-white/50 backdrop-blur-sm rounded-2xl overflow-hidden hover:scale-105 transition-all cursor-pointer shadow-sm border border-stone-forest/30 relative">
+                      {media.type === 'video' ? (
+                        <video
+                          src={media.url}
                           className="w-full h-auto object-contain"
-                          loading="lazy"
-                          decoding="async"
-                          onClick={() => setSelectedImage(event.photos[0])}
+                          controls
+                          preload="metadata"
                           style={{ 
                             maxWidth: '100%',
                             height: 'auto',
                             aspectRatio: 'auto'
                           }}
                         />
-                      </div>
-                    ))
-                  )}
+                      ) : (
+                        <img
+                          src={media.url}
+                          alt={`${media.eventName} from ${media.dayTitle}`}
+                          className="w-full h-auto object-contain"
+                          loading="lazy"
+                          decoding="async"
+                          onClick={() => setSelectedImage(media.url)}
+                          style={{ 
+                            maxWidth: '100%',
+                            height: 'auto',
+                            aspectRatio: 'auto'
+                          }}
+                        />
+                      )}
+                      {/* Show uploader avatar if available */}
+                      {media.uploader && (
+                        <div className="absolute top-2 left-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm">
+                          <img
+                            src={media.uploader.avatar}
+                            alt={media.uploader.name}
+                            className="w-full h-full object-cover"
+                            title={`Uploaded by ${media.uploader.name}`}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
               
               {/* Map and Participants */}
-              <div className="w-80">
+              <div className="w-64">
                 <h3 className="text-lg font-display font-medium text-stone-900 mb-3">Our Journey</h3>
                 <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-4 h-48 border border-stone-forest/30 shadow-sm mb-4">
                   <div className="relative w-full h-full bg-gradient-to-br from-stone-forest/30 to-stone-forest/40 rounded-xl overflow-hidden">
@@ -1569,7 +1636,7 @@ export default function Home() {
                     <h2 className="text-2xl font-display font-bold text-stone-900 tracking-tight">{day.title}</h2>
                     <div className="flex items-center space-x-3">
                       <span className="text-sm font-medium text-stone-800 bg-stone-forest/20 px-3 py-1 rounded-full">{day.date}</span>
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                      <div className="flex items-center space-x-1">
                         {day.events.length === 0 && (
                           <button
                             onClick={() => deleteDay(day.id)}
@@ -1604,6 +1671,36 @@ export default function Home() {
                   <div className="w-2 h-2 bg-stone-forest rounded-full mr-2"></div>
                   {day.events.length} events
                 </span>
+                {/* Day participants */}
+                {getDayParticipants(day).length > 0 && (
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center -space-x-2">
+                      {getDayParticipants(day).slice(0, 5).map((participant: any, index: number) => (
+                        <div
+                          key={participant.id}
+                          className="w-5 h-5 rounded-full border-2 border-white/80 shadow-sm overflow-hidden bg-white/20 backdrop-blur-sm"
+                          style={{ zIndex: 10 - index }}
+                          title={participant.name}
+                        >
+                          <img
+                            src={participant.avatar}
+                            alt={participant.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ))}
+                      {getDayParticipants(day).length > 5 && (
+                        <div
+                          className="w-5 h-5 rounded-full border-2 border-white/80 shadow-sm bg-stone-200/80 backdrop-blur-sm flex items-center justify-center"
+                          style={{ zIndex: 5 }}
+                          title={`+${getDayParticipants(day).length - 5} more participants`}
+                        >
+                          <span className="text-xs font-bold text-stone-600">+{getDayParticipants(day).length - 5}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1850,7 +1947,7 @@ export default function Home() {
                                 </div>
                               )}
                               
-                              <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                              <div className="absolute top-0 right-0 flex items-center space-x-1">
                                 {event.photos.length + event.videos.length === 0 && (
                                   <button
                                     onClick={() => deleteEvent(day.id, event.id)}
@@ -1909,7 +2006,7 @@ export default function Home() {
                                   />
                                 </div>
                                 {editingEvent === event.id && api.getCredentials().userId === photo.uploader.id && (
-                                  <div className="absolute top-2 right-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm opacity-0 group-hover:opacity-100">
+                                  <div className="absolute top-2 right-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm bg-white/20 backdrop-blur-sm">
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -1933,13 +2030,9 @@ export default function Home() {
                               <video
                                 src={typeof video === 'string' ? video : video.url}
                                 className="w-full h-full object-cover"
-                                poster={event.photos[0] ? (typeof event.photos[0] === 'string' ? event.photos[0] : event.photos[0].url) : undefined}
+                                controls
+                                preload="metadata"
                               />
-                              <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                                <div className="w-6 h-6 bg-white/90 rounded-full flex items-center justify-center shadow-sm">
-                                  <div className="w-0 h-0 border-l-[6px] border-l-stone-700 border-t-[4px] border-b-[4px] border-t-transparent border-b-transparent ml-0.5"></div>
-                                </div>
-                              </div>
                               {typeof video === 'object' && video.uploader && (
                                 <>
                                   <div className="absolute top-2 left-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm">
@@ -1951,7 +2044,7 @@ export default function Home() {
                                     />
                                   </div>
                                   {editingEvent === event.id && api.getCredentials().userId === video.uploader.id && (
-                                    <div className="absolute top-2 right-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm opacity-0 group-hover:opacity-100">
+                                    <div className="absolute top-2 right-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm bg-white/20 backdrop-blur-sm">
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -2140,9 +2233,29 @@ export default function Home() {
         >
           <div className="bg-white/95 backdrop-blur-sm border border-stone-300/50 rounded-lg shadow-lg p-4 min-w-[280px]">
             <div className="grid grid-cols-7 gap-1 text-xs">
-              {/* Calendar Header */}
-              <div className="col-span-7 text-center font-medium text-stone-700 mb-2">
-                {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              {/* Calendar Header with Navigation */}
+              <div className="col-span-7 flex items-center justify-between mb-2">
+                <button
+                  onClick={() => navigateMonth('prev')}
+                  className="p-1 hover:bg-stone-200/60 rounded transition-colors"
+                  title="Previous month"
+                >
+                  <svg className="w-4 h-4 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <div className="text-center font-medium text-stone-700">
+                  {new Date(datePickerMonth.year, datePickerMonth.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </div>
+                <button
+                  onClick={() => navigateMonth('next')}
+                  className="p-1 hover:bg-stone-200/60 rounded transition-colors"
+                  title="Next month"
+                >
+                  <svg className="w-4 h-4 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
               </div>
               
               {/* Day Labels */}
@@ -2155,8 +2268,8 @@ export default function Home() {
               {/* Calendar Days */}
               {(() => {
                 const now = new Date();
-                const year = now.getFullYear();
-                const month = now.getMonth();
+                const year = datePickerMonth.year;
+                const month = datePickerMonth.month;
                 const firstDay = new Date(year, month, 1);
                 const lastDay = new Date(year, month + 1, 0);
                 const startDate = new Date(firstDay);
@@ -2280,11 +2393,19 @@ export default function Home() {
             >
               ×
             </button>
-            <img
-              src={selectedImage}
-              alt="Enlarged view"
-              className="max-w-full max-h-[90vh] object-contain"
-            />
+            {selectedMedia?.type === 'video' ? (
+              <video
+                src={selectedImage}
+                className="max-w-full max-h-[90vh] object-contain"
+                controls
+              />
+            ) : (
+              <img
+                src={selectedImage}
+                alt="Enlarged view"
+                className="max-w-full max-h-[90vh] object-contain"
+              />
+            )}
           </div>
         </div>,
         document.body
