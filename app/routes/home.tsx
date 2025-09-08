@@ -50,211 +50,6 @@ interface Participant {
   avatar: string;
 }
 
-const mockTripDays: TripDay[] = [
-  {
-    id: "day1",
-    date: "July 15, 2024",
-    title: "Arrival in Zurich",
-    heroPhoto: "https://picsum.photos/800/600?random=1",
-    heroVideo: undefined,
-    photoCount: 24,
-    backgroundColor: "bg-purple-100",
-    participants: [
-      { id: "p1", name: "You", avatar: "https://picsum.photos/80/80?random=30" },
-      { id: "p2", name: "Sarah", avatar: "https://picsum.photos/80/80?random=31" },
-      { id: "p3", name: "Mike", avatar: "https://picsum.photos/80/80?random=32" },
-      { id: "p4", name: "Emma", avatar: "https://picsum.photos/80/80?random=33" }
-    ],
-    events: [
-      {
-        id: "event1",
-        name: "Flight Landing",
-        description: "Finally made it to Switzerland! ✈️",
-        emoji: "✈️",
-        photos: [
-          "https://picsum.photos/400/300?random=4",
-          "https://picsum.photos/400/500?random=5",
-          "https://picsum.photos/400/400?random=6"
-        ],
-        videos: [],
-        participants: [
-          { id: "p1", name: "You", avatar: "https://picsum.photos/80/80?random=30" },
-          { id: "p2", name: "Sarah", avatar: "https://picsum.photos/80/80?random=31" },
-          { id: "p3", name: "Mike", avatar: "https://picsum.photos/80/80?random=32" },
-          { id: "p4", name: "Emma", avatar: "https://picsum.photos/80/80?random=33" }
-        ]
-      },
-      {
-        id: "event2",
-        name: "First Swiss Meal",
-        description: "Traditional Swiss cuisine at a local restaurant",
-        emoji: "🍽️",
-        photos: [
-          "https://picsum.photos/400/600?random=7",
-          "https://picsum.photos/400/350?random=8",
-          "https://picsum.photos/400/450?random=9"
-        ],
-        videos: [],
-        participants: [
-          { id: "p1", name: "You", avatar: "https://picsum.photos/80/80?random=30" },
-          { id: "p2", name: "Sarah", avatar: "https://picsum.photos/80/80?random=31" },
-          { id: "p3", name: "Mike", avatar: "https://picsum.photos/80/80?random=32" }
-        ]
-      },
-      {
-        id: "event3",
-        name: "Exploring Old Town",
-        description: "Walking through Zurich's historic streets",
-        emoji: "🏛️",
-        photos: [
-          "https://picsum.photos/400/550?random=10",
-          "https://picsum.photos/400/320?random=11"
-        ],
-        videos: [],
-        participants: [
-          { id: "p1", name: "You", avatar: "https://picsum.photos/80/80?random=30" },
-          { id: "p4", name: "Emma", avatar: "https://picsum.photos/80/80?random=33" }
-        ]
-      }
-    ]
-  },
-  {
-    id: "day2",
-    date: "July 16, 2024", 
-    title: "Exploring Lucerne",
-    heroPhoto: "https://picsum.photos/800/600?random=2",
-    photoCount: 45,
-    backgroundColor: "bg-yellow-100",
-    participants: [
-      { id: "p1", name: "You", avatar: "https://picsum.photos/80/80?random=30" },
-      { id: "p2", name: "Sarah", avatar: "https://picsum.photos/80/80?random=31" },
-      { id: "p3", name: "Mike", avatar: "https://picsum.photos/80/80?random=32" },
-      { id: "p4", name: "Emma", avatar: "https://picsum.photos/80/80?random=33" }
-    ],
-    events: [
-      {
-        id: "event4",
-        name: "Chapel Bridge Walk",
-        description: "Walking across the famous wooden bridge",
-        emoji: "🌉",
-        photos: [
-          "https://picsum.photos/400/480?random=12",
-          "https://picsum.photos/400/360?random=13",
-          "https://picsum.photos/400/520?random=14"
-        ],
-        videos: [],
-        participants: [
-          { id: "p1", name: "You", avatar: "https://picsum.photos/80/80?random=30" },
-          { id: "p2", name: "Sarah", avatar: "https://picsum.photos/80/80?random=31" },
-          { id: "p3", name: "Mike", avatar: "https://picsum.photos/80/80?random=32" },
-          { id: "p4", name: "Emma", avatar: "https://picsum.photos/80/80?random=33" }
-        ]
-      },
-      {
-        id: "event5",
-        name: "Lake Lucerne Boat Tour",
-        description: "Scenic boat ride with mountain views",
-        emoji: "⛵",
-        photos: [
-          "https://picsum.photos/400/420?random=15",
-          "https://picsum.photos/400/580?random=16",
-          "https://picsum.photos/400/340?random=17",
-          "https://picsum.photos/400/460?random=18"
-        ],
-        videos: [],
-        participants: [
-          { id: "p1", name: "You", avatar: "https://picsum.photos/80/80?random=30" },
-          { id: "p2", name: "Sarah", avatar: "https://picsum.photos/80/80?random=31" },
-          { id: "p4", name: "Emma", avatar: "https://picsum.photos/80/80?random=33" }
-        ]
-      },
-      {
-        id: "event6",
-        name: "Lucerne Dinner",
-        description: "Amazing dinner with lake views",
-        emoji: "🍷",
-        photos: [
-          "https://picsum.photos/400/500?random=19",
-          "https://picsum.photos/400/380?random=20"
-        ],
-        videos: [],
-        participants: [
-          { id: "p1", name: "You", avatar: "https://picsum.photos/80/80?random=30" },
-          { id: "p2", name: "Sarah", avatar: "https://picsum.photos/80/80?random=31" },
-          { id: "p3", name: "Mike", avatar: "https://picsum.photos/80/80?random=32" },
-          { id: "p4", name: "Emma", avatar: "https://picsum.photos/80/80?random=33" }
-        ]
-      }
-    ]
-  },
-  {
-    id: "day3",
-    date: "July 17, 2024",
-    title: "Jungfraujoch Adventure",
-    heroPhoto: "https://picsum.photos/800/600?random=3",
-    photoCount: 67,
-    backgroundColor: "bg-blue-100",
-    participants: [
-      { id: "p1", name: "You", avatar: "https://picsum.photos/80/80?random=30" },
-      { id: "p2", name: "Sarah", avatar: "https://picsum.photos/80/80?random=31" },
-      { id: "p3", name: "Mike", avatar: "https://picsum.photos/80/80?random=32" },
-      { id: "p4", name: "Emma", avatar: "https://picsum.photos/80/80?random=33" }
-    ],
-    events: [
-      {
-        id: "event7",
-        name: "Train to Top of Europe",
-        description: "Amazing train journey to Jungfraujoch",
-        emoji: "🚂",
-        photos: [
-          "https://picsum.photos/400/440?random=21",
-          "https://picsum.photos/400/600?random=22",
-          "https://picsum.photos/400/320?random=23"
-        ],
-        videos: [],
-        participants: [
-          { id: "p1", name: "You", avatar: "https://picsum.photos/80/80?random=30" },
-          { id: "p2", name: "Sarah", avatar: "https://picsum.photos/80/80?random=31" },
-          { id: "p3", name: "Mike", avatar: "https://picsum.photos/80/80?random=32" },
-          { id: "p4", name: "Emma", avatar: "https://picsum.photos/80/80?random=33" }
-        ]
-      },
-      {
-        id: "event8",
-        name: "Ice Palace & Glaciers",
-        description: "Exploring the ice palace and seeing glaciers",
-        emoji: "🧊",
-        photos: [
-          "https://picsum.photos/400/480?random=24",
-          "https://picsum.photos/400/350?random=25",
-          "https://picsum.photos/400/520?random=26",
-          "https://picsum.photos/400/400?random=27"
-        ],
-        videos: [],
-        participants: [
-          { id: "p1", name: "You", avatar: "https://picsum.photos/80/80?random=30" },
-          { id: "p3", name: "Mike", avatar: "https://picsum.photos/80/80?random=32" },
-          { id: "p4", name: "Emma", avatar: "https://picsum.photos/80/80?random=33" }
-        ]
-      },
-      {
-        id: "event9",
-        name: "Mountain Hiking",
-        description: "Breathtaking hikes in the Swiss Alps",
-        emoji: "🏔️",
-        photos: [
-          "https://picsum.photos/400/560?random=28",
-          "https://picsum.photos/400/380?random=29"
-        ],
-        videos: [],
-        participants: [
-          { id: "p1", name: "You", avatar: "https://picsum.photos/80/80?random=30" },
-          { id: "p2", name: "Sarah", avatar: "https://picsum.photos/80/80?random=31" }
-        ]
-      }
-    ]
-  }
-];
 
 export default function Home() {
   // Authentication state
@@ -273,6 +68,7 @@ export default function Home() {
   const [activeDay, setActiveDay] = useState<string>("");
   const [activeEvent, setActiveEvent] = useState<string>("");
   const [editingEvent, setEditingEvent] = useState<string>("");
+  const [savingEvent, setSavingEvent] = useState<string>("");
   const [editTitle, setEditTitle] = useState<string>("");
   const [editDescription, setEditDescription] = useState<string>("");
   const [editLocation, setEditLocation] = useState<string>("");
@@ -673,7 +469,6 @@ export default function Home() {
   };
 
   const addPhotosToEvent = async (dayId: string, eventId: string, files: FileList) => {
-    console.log('addPhotosToEvent called with:', { dayId, eventId, filesCount: files.length });
     try {
       // Show loading state with temporary URLs
       const fileArray = Array.from(files);
@@ -711,9 +506,7 @@ export default function Home() {
       ));
 
       // Upload to backend
-      console.log('Starting backend upload...');
       const result = await api.uploadMedia(eventId, files);
-      console.log('Backend upload result:', result);
       
       if (result.success) {
         // Get current user info for uploader avatar
@@ -830,38 +623,63 @@ export default function Home() {
   };
 
   const saveEventEdit = async (dayId: string, eventId: string) => {
+    if (savingEvent === eventId) return; // Prevent double-saves
+    
+    setSavingEvent(eventId);
+    
+    // Store current values for potential rollback
+    const currentEvent = tripDays.find(day => day.id === dayId)?.events.find(event => event.id === eventId);
+    const updateData = {
+      name: editTitle,
+      description: editDescription,
+      emoji: editEmoji,
+      location: editLocation || undefined
+    };
+    
+    // Optimistic update - update UI immediately
+    setTripDays(prev => prev.map(day => 
+      day.id === dayId 
+        ? { 
+            ...day,
+            events: day.events.map(event => 
+              event.id === eventId 
+                ? { ...event, ...updateData }
+                : event
+            )
+          }
+        : day
+    ));
+    
+    // Exit edit mode immediately for better UX
+    setEditingEvent("");
+    setEditTitle("");
+    setEditDescription("");
+    setEditEmoji("");
+    setEditLocation("");
+    setIsEditingDescription(false);
+    setShowEmojiPicker("");
+    
     try {
-      await api.updateEvent(eventId, {
-        name: editTitle,
-        description: editDescription,
-        emoji: editEmoji,
-        location: editLocation || undefined
-      });
-      
-      // Update local state after successful API call
-      setTripDays(prev => prev.map(day => 
-        day.id === dayId 
-          ? { 
-              ...day,
-              events: day.events.map(event => 
-                event.id === eventId 
-                  ? { ...event, name: editTitle, description: editDescription, emoji: editEmoji, location: editLocation }
-                  : event
-              )
-            }
-          : day
-      ));
-      
-      setEditingEvent("");
-      setEditTitle("");
-      setEditDescription("");
-      setEditEmoji("");
-      setEditLocation("");
-      setIsEditingDescription(false);
-      setShowEmojiPicker("");
+      await api.updateEvent(eventId, updateData);
     } catch (error) {
       console.error('Failed to update event:', error);
       setError('Failed to update event');
+      
+      // Rollback on error
+      if (currentEvent) {
+        setTripDays(prev => prev.map(day => 
+          day.id === dayId 
+            ? { 
+                ...day,
+                events: day.events.map(event => 
+                  event.id === eventId ? currentEvent : event
+                )
+              }
+            : day
+        ));
+      }
+    } finally {
+      setSavingEvent("");
     }
   };
 
@@ -883,7 +701,6 @@ export default function Home() {
 
   const saveDayEdit = async (dayId: string) => {
     try {
-      console.log('Saving day edit:', { dayId, title: editDayTitle, date: editDayDate });
       
       // Validate inputs
       if (!editDayTitle.trim()) {
@@ -900,8 +717,6 @@ export default function Home() {
         title: editDayTitle.trim(),
         date: editDayDate
       });
-      
-      console.log('Day update successful');
       
       // Update local state and reorder chronologically if date changed
       setTripDays(prev => {
@@ -1216,22 +1031,16 @@ export default function Home() {
 
   const addNewDay = async () => {
     try {
-      console.log('Creating new day...');
       const today = new Date().toLocaleDateString('en-US', { 
         month: 'long', 
         day: 'numeric', 
         year: 'numeric' 
       });
       
-      console.log('Date format:', today);
-      console.log('Calling API...');
-      
       const result = await api.createTripDay('album-1', {
         title: 'New Day',
         date: today
       });
-      
-      console.log('API result:', result);
       
       if (!result.dayId) {
         throw new Error('No dayId returned from API');
@@ -1249,8 +1058,6 @@ export default function Home() {
         events: []
       };
       
-      console.log('New day object created:', newDay);
-      
       // Insert new day in correct chronological position
       setTripDays(prev => {
         const allDays = [...prev, newDay];
@@ -1262,14 +1069,10 @@ export default function Home() {
         });
       });
       
-      console.log('Day added to UI state');
-      
       // Immediately start editing the new day
       setEditingDay(result.dayId);
       setEditDayTitle('New Day');
       setEditDayDate(today);
-      
-      console.log('Edit mode activated');
       
       // Scroll to the new day
       setTimeout(() => {
@@ -1356,7 +1159,7 @@ export default function Home() {
 
     try {
       const response = await fetch(
-        `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&apiKey=02e88c55f4b445fdaad08a07c030fd74`,
+        `/api/location/autocomplete?query=${encodeURIComponent(query)}`,
         { method: 'GET' }
       );
       const result = await response.json();
@@ -1486,13 +1289,15 @@ export default function Home() {
                 <h3 className="text-lg font-display font-medium text-stone-900 mb-3">Trip Highlights</h3>
                 <div className="columns-1 sm:columns-2 gap-3 space-y-3" style={{columnFill: 'balance'}}>
                   {getRandomHighlights().map((media, index) => (
-                    <div key={`highlight-${index}`} className="break-inside-avoid mb-3 bg-white/50 backdrop-blur-sm rounded-2xl overflow-hidden hover:scale-105 transition-all cursor-pointer shadow-sm border border-stone-forest/30 relative">
+                    <div key={`highlight-${media.url}-${index}`} className="break-inside-avoid mb-3 bg-white/50 backdrop-blur-sm rounded-2xl overflow-hidden hover:scale-105 transition-all cursor-pointer shadow-sm border border-stone-forest/30 relative">
                       {media.type === 'video' ? (
                         <video
                           src={media.url}
                           className="w-full h-auto object-contain"
                           controls
                           preload="metadata"
+                          playsInline
+                          muted
                           style={{ 
                             maxWidth: '100%',
                             height: 'auto',
@@ -1892,12 +1697,22 @@ export default function Home() {
                                 )}
                                 <button
                                   onClick={() => saveEventEdit(day.id, event.id)}
-                                  className="p-1 rounded-lg hover:bg-stone-200/50 transition-colors"
-                                  title="Save changes"
+                                  disabled={savingEvent === event.id}
+                                  className="p-1 rounded-lg hover:bg-stone-200/50 transition-colors disabled:opacity-50"
+                                  title={savingEvent === event.id ? "Saving..." : "Save changes"}
                                 >
-                                  <svg className="w-4 h-4 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                  </svg>
+                                  {savingEvent === event.id ? (
+                                    <div className="w-4 h-4 animate-spin">
+                                      <svg className="w-full h-full text-stone-600" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                    </div>
+                                  ) : (
+                                    <svg className="w-4 h-4 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
                                 </button>
                               </div>
                             </>
@@ -2024,14 +1839,19 @@ export default function Home() {
                           </div>
                         ))}
                         
-                        {event.videos.map((video, index) => (
-                          <div key={`video-${index}`} className="break-inside-avoid mb-3 aspect-video bg-white/40 backdrop-blur-sm rounded-2xl overflow-hidden group shadow-sm border border-stone-forest/30">
+                        {event.videos.map((video, index) => {
+                          const videoUrl = typeof video === 'string' ? video : video.url;
+                          return (
+                          <div key={videoUrl || `video-${event.id}-${index}`} className="break-inside-avoid mb-3 aspect-video bg-white/40 backdrop-blur-sm rounded-2xl overflow-hidden group shadow-sm border border-stone-forest/30">
                             <div className="relative w-full h-full">
                               <video
-                                src={typeof video === 'string' ? video : video.url}
+                                key={videoUrl}
+                                src={videoUrl}
                                 className="w-full h-full object-cover"
                                 controls
                                 preload="metadata"
+                                playsInline
+                                muted
                               />
                               {typeof video === 'object' && video.uploader && (
                                 <>
@@ -2061,7 +1881,8 @@ export default function Home() {
                               )}
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                         
                         {/* Add to this event - discrete */}
                         <div className="break-inside-avoid mb-3 relative z-0">
@@ -2398,6 +2219,8 @@ export default function Home() {
                 src={selectedImage}
                 className="max-w-full max-h-[90vh] object-contain"
                 controls
+                playsInline
+                preload="metadata"
               />
             ) : (
               <img

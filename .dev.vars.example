@@ -1,0 +1,6 @@
+# Copy this file to .dev.vars and fill in your actual values
+# This file shows the environment variables needed for local development
+
+# Geoapify API key for location autocomplete
+# Get your API key at: https://www.geoapify.com/
+GEOAPIFY_API_KEY=02e88c55f4b445fdaad08a07c030fd74

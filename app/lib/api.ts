@@ -3,6 +3,7 @@ interface Env {
     BUCKET: R2Bucket;
     CACHE: KVNamespace;
     REALTIME: KVNamespace;
+    GEOAPIFY_API_KEY?: string;
 }
 
 // CORS headers
@@ -612,7 +613,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                             console.log('File uploaded to R2 successfully:', fileName, 'etag:', r2Object.etag);
                             uploadSuccess = true;
                             
-                            // Save media info to database  
+                            // Save media info to database with R2 key for direct access
                             const mediaId = `media-${timestamp}_${randomId}`;
                             const mediaUrl = `/api/media/${mediaId}`;
                             const mediaType = file.type.startsWith('video/') ? 'video' : 'photo';
@@ -677,11 +678,11 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
             const mediaId = url.pathname.split('/')[3];
             
             try {
-                // We need to reconstruct the R2 key from mediaId and event info
-                // MediaId format: media-{timestamp}_{randomId}
-                // We need to find the event and album to build the R2 path
+                // Check for conditional requests
+                const ifNoneMatch = request.headers.get('If-None-Match');
+                const range = request.headers.get('Range');
                 
-                // First get the event_id for this media
+                // Get media info with standard lookup (works with existing schema)
                 const mediaInfo = await env.DB.prepare(`
                     SELECT em.*, e.id as event_id, td.album_id
                     FROM event_media em
@@ -704,12 +705,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                 
                 // Try to find the file in R2 by listing objects with the prefix
                 const r2Prefix = `albums/${albumId}/media/${mediaType}/${eventId}/`;
-                console.log('Looking for media with prefix:', r2Prefix);
-                console.log('Looking for mediaId:', mediaId);
-                
-                // List objects to find the matching file
                 const objects = await env.BUCKET.list({ prefix: r2Prefix });
-                console.log('Found objects:', objects.objects.map(o => o.key));
                 
                 // Find the object that matches our mediaId pattern
                 const matchingObject = objects.objects.find(obj => {
@@ -719,34 +715,72 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                 });
                 
                 if (!matchingObject) {
-                    console.log('No matching object found for mediaId:', mediaId);
                     return new Response('File not found in storage', { status: 404 });
                 }
                 
-                // Get file from R2
-                const r2Object = await env.BUCKET.get(matchingObject.key);
+                const actualR2Key = matchingObject.key;
+                
+                // Handle range requests for better video streaming
+                let r2Options: any = {};
+                let status = 200;
+                
+                if (range) {
+                    const matches = range.match(/bytes=(\d+)-(\d*)/);
+                    if (matches) {
+                        const start = parseInt(matches[1]);
+                        const end = matches[2] ? parseInt(matches[2]) : undefined;
+                        
+                        r2Options.range = {
+                            offset: start,
+                            length: end ? (end - start + 1) : undefined
+                        };
+                        status = 206; // Partial Content
+                    }
+                }
+                
+                // Get file from R2 using the actual key
+                const r2Object = await env.BUCKET.get(actualR2Key, r2Options);
                 
                 if (!r2Object) {
                     return new Response('File not found in storage', { status: 404 });
                 }
                 
+                // If we have an ETag and it matches, return 304
+                if (ifNoneMatch && r2Object.etag && ifNoneMatch === r2Object.etag) {
+                    return new Response(null, { status: 304 });
+                }
+                
                 // Determine content type from file extension
-                const fileExtension = matchingObject.key.split('.').pop()?.toLowerCase();
+                const fileExtension = actualR2Key.split('.').pop()?.toLowerCase();
                 const contentType = fileExtension === 'mp4' ? 'video/mp4' : 
                                    fileExtension === 'webm' ? 'video/webm' :
                                    fileExtension === 'jpg' || fileExtension === 'jpeg' ? 'image/jpeg' :
                                    fileExtension === 'png' ? 'image/png' :
                                    fileExtension === 'webp' ? 'image/webp' : 'application/octet-stream';
                 
-                return new Response(r2Object.body, {
-                    headers: {
-                        ...corsHeaders,
-                        'Content-Type': contentType,
-                        'Content-Length': r2Object.size.toString(),
-                        'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
-                        'Content-Disposition': `inline; filename="${matchingObject.key.split('/').pop()}"`
+                const headers: Record<string, string> = {
+                    ...corsHeaders,
+                    'Content-Type': contentType,
+                    'Cache-Control': 'public, max-age=31536000, immutable',
+                    'ETag': r2Object.etag || '',
+                    'Content-Disposition': `inline; filename="${actualR2Key.split('/').pop()}"`,
+                    'Accept-Ranges': 'bytes'
+                };
+                
+                if (status === 206 && range) {
+                    // For range requests, we need to calculate the actual range served
+                    const matches = range.match(/bytes=(\d+)-(\d*)/);
+                    if (matches) {
+                        const start = parseInt(matches[1]);
+                        const end = matches[2] ? parseInt(matches[2]) : (r2Object.size - 1);
+                        headers['Content-Range'] = `bytes ${start}-${end}/${r2Object.size}`;
+                        headers['Content-Length'] = (end - start + 1).toString();
                     }
-                });
+                } else {
+                    headers['Content-Length'] = r2Object.size.toString();
+                }
+                
+                return new Response(r2Object.body, { status, headers });
             } catch (error) {
                 console.error('Error serving media:', error);
                 return new Response('Error serving media', { status: 500 });
@@ -822,6 +856,42 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                 console.error('Error deleting media:', error);
                 return new Response(JSON.stringify({ error: 'Failed to delete media' }), { 
                     status: 500, 
+                    headers: corsHeaders
+                });
+            }
+        }
+        
+        // Location autocomplete route
+        if (url.pathname === '/api/location/autocomplete' && request.method === 'GET') {
+            const query = url.searchParams.get('query');
+            const apiKey = env.GEOAPIFY_API_KEY;
+            
+            if (!query) {
+                return new Response(JSON.stringify({ error: 'Query parameter required' }), {
+                    status: 400,
+                    headers: corsHeaders
+                });
+            }
+            
+            if (!apiKey) {
+                return new Response(JSON.stringify({ features: [] }), {
+                    headers: corsHeaders
+                });
+            }
+            
+            try {
+                const response = await fetch(
+                    `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&apiKey=${apiKey}`,
+                    { method: 'GET' }
+                );
+                const result = await response.json();
+                
+                return new Response(JSON.stringify(result), {
+                    headers: corsHeaders
+                });
+            } catch (error) {
+                console.error('Location API error:', error);
+                return new Response(JSON.stringify({ features: [] }), {
                     headers: corsHeaders
                 });
             }
