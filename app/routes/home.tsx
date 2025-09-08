@@ -1797,35 +1797,55 @@ export default function Home() {
                       {/* Event photos grid */}
                       <div className="columns-1 sm:columns-2 gap-3 space-y-3 mb-4 relative" style={{columnFill: 'balance', zIndex: 0}}>
                         {event.photos.map((photo, index) => (
-                          <div key={index} className="break-inside-avoid mb-3 bg-white/40 backdrop-blur-sm rounded-2xl overflow-hidden group shadow-sm border border-stone-forest/30">
+                          <div key={index} className="break-inside-avoid mb-3 bg-white/40 backdrop-blur-sm rounded-2xl overflow-hidden group shadow-sm border border-stone-forest/30 relative">
                             <img
-                              src={photo}
+                              src={typeof photo === 'string' ? photo : photo.url}
                               alt={`${event.name} photo ${index + 1}`}
                               className="w-full h-auto object-contain hover:scale-105 transition-transform cursor-pointer"
                               loading="lazy"
                               decoding="async"
-                              onClick={() => setSelectedImage(photo)}
+                              onClick={() => setSelectedImage(typeof photo === 'string' ? photo : photo.url)}
                               style={{ 
                                 maxWidth: '100%',
                                 height: 'auto',
                                 aspectRatio: 'auto'
                               }}
                             />
+                            {typeof photo === 'object' && photo.uploader && (
+                              <div className="absolute top-2 left-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm">
+                                <img
+                                  src={photo.uploader.avatar}
+                                  alt={photo.uploader.name}
+                                  className="w-full h-full object-cover"
+                                  title={`Uploaded by ${photo.uploader.name}`}
+                                />
+                              </div>
+                            )}
                           </div>
                         ))}
                         
                         {event.videos.map((video, index) => (
                           <div key={`video-${index}`} className="break-inside-avoid mb-3 aspect-video bg-white/40 backdrop-blur-sm rounded-2xl overflow-hidden relative group shadow-sm border border-stone-forest/30">
                             <video
-                              src={video}
+                              src={typeof video === 'string' ? video : video.url}
                               className="w-full object-cover"
-                              poster={event.photos[0] || undefined}
+                              poster={event.photos[0] ? (typeof event.photos[0] === 'string' ? event.photos[0] : event.photos[0].url) : undefined}
                             />
                             <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
                               <div className="w-6 h-6 bg-white/90 rounded-full flex items-center justify-center shadow-sm">
                                 <div className="w-0 h-0 border-l-[6px] border-l-stone-700 border-t-[4px] border-b-[4px] border-t-transparent border-b-transparent ml-0.5"></div>
                               </div>
                             </div>
+                            {typeof video === 'object' && video.uploader && (
+                              <div className="absolute top-2 left-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm">
+                                <img
+                                  src={video.uploader.avatar}
+                                  alt={video.uploader.name}
+                                  className="w-full h-full object-cover"
+                                  title={`Uploaded by ${video.uploader.name}`}
+                                />
+                              </div>
+                            )}
                           </div>
                         ))}
                         
