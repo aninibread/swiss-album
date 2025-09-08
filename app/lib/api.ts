@@ -170,9 +170,9 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                 ORDER BY e.trip_day_id, e.sort_order
             `).bind(albumId).all();
             
-            // Get media for all events
+            // Get media for all events with uploader info
             const media = await env.DB.prepare(`
-                SELECT em.*, e.trip_day_id
+                SELECT em.*, e.trip_day_id, em.uploaded_by as uploader_id
                 FROM event_media em
                 JOIN events e ON em.event_id = e.id
                 WHERE e.trip_day_id IN (SELECT id FROM trip_days WHERE album_id = ?)
@@ -204,16 +204,25 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                     events: dayEvents.map((event: any) => {
                         // Get media for this event
                         const eventMedia = media.results?.filter((m: any) => m.event_id === event.id) || [];
-                        const photos: string[] = [];
-                        const videos: string[] = [];
+                        const photos: any[] = [];
+                        const videos: any[] = [];
                         
                         eventMedia.forEach((m: any) => {
                             // Use the media_url directly from database
                             if (m.media_url) {
+                                const mediaItem = {
+                                    url: m.media_url,
+                                    uploader: {
+                                        id: m.uploader_id,
+                                        name: m.uploader_id,
+                                        avatar: `https://picsum.photos/80/80?random=${m.uploader_id.length}`
+                                    }
+                                };
+                                
                                 if (m.media_type === 'video') {
-                                    videos.push(m.media_url);
+                                    videos.push(mediaItem);
                                 } else {
-                                    photos.push(m.media_url);
+                                    photos.push(mediaItem);
                                 }
                             }
                         });

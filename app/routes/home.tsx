@@ -24,14 +24,23 @@ interface TripDay {
   backgroundColor: string;
 }
 
+interface MediaItem {
+  url: string;
+  uploader: {
+    id: string;
+    name: string;
+    avatar: string;
+  };
+}
+
 interface TripEvent {
   id: string;
   name: string;
   description: string;
   location?: string;
   emoji: string;
-  photos: string[];
-  videos: string[];
+  photos: MediaItem[];
+  videos: MediaItem[];
   participants: Participant[];
 }
 
