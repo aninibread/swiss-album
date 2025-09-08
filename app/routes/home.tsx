@@ -1339,6 +1339,7 @@ export default function Home() {
                         className="w-full h-auto object-contain"
                         loading="lazy"
                         decoding="async"
+                        onClick={() => setSelectedImage(day.heroPhoto)}
                         style={{ 
                           maxWidth: '100%',
                           height: 'auto',
@@ -1357,6 +1358,7 @@ export default function Home() {
                           className="w-full h-auto object-contain"
                           loading="lazy"
                           decoding="async"
+                          onClick={() => setSelectedImage(event.photos[0])}
                           style={{ 
                             maxWidth: '100%',
                             height: 'auto',
@@ -1793,6 +1795,7 @@ export default function Home() {
                               className="w-full h-auto object-contain hover:scale-105 transition-transform cursor-pointer"
                               loading="lazy"
                               decoding="async"
+                              onClick={() => setSelectedImage(photo)}
                               style={{ 
                                 maxWidth: '100%',
                                 height: 'auto',
@@ -2103,6 +2106,32 @@ export default function Home() {
                 )}
               </button>
             ))}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Image Modal */}
+      {selectedImage && createPortal(
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div 
+            className="relative max-w-7xl max-h-[90vh] bg-white/10 backdrop-blur-sm rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+            >
+              ×
+            </button>
+            <img
+              src={selectedImage}
+              alt="Enlarged view"
+              className="max-w-full max-h-[90vh] object-contain"
+            />
           </div>
         </div>,
         document.body
