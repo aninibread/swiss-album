@@ -127,14 +127,14 @@ Object storage for all media files with organized folder structure.
 │   └── {user_id}.jpg
 └── media/
     ├── photos/
-    │   └── {event_id}_{upload_timestamp}_{random_id}.jpg
+    │   └── {event_id}/{upload_timestamp}_{random_id}.jpg
     └── videos/
-        └── {event_id}_{upload_timestamp}_{random_id}.mp4
+        └── {event_id}/{upload_timestamp}_{random_id}.mp4
 ```
 
 #### File Naming Convention
-- Photos: `{event_id}_{upload_timestamp}_{random_id}.jpg`
-- Videos: `{event_id}_{upload_timestamp}_{random_id}.mp4`
+- Photos: `{event_id}/{upload_timestamp}_{random_id}.jpg`
+- Videos: `{event_id}/{upload_timestamp}_{random_id}.mp4`
 - Avatars: `{user_id}.jpg`
 - Upload timestamp format: `YYYYMMDD_HHMMSS`
 

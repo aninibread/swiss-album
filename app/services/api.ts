@@ -231,6 +231,45 @@ class ApiService {
         return response.json();
     }
 
+    async uploadMedia(eventId: string, files: FileList) {
+        const credentials = this.getCredentials();
+        console.log('Upload media - credentials:', credentials);
+        console.log('Upload media - eventId:', eventId, 'files:', files.length);
+        
+        const formData = new FormData();
+        
+        formData.append('userId', credentials.userId || '');
+        formData.append('password', credentials.password || '');
+        formData.append('eventId', eventId);
+        
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files', files[i]);
+            console.log('Adding file to FormData:', files[i].name, files[i].type);
+        }
+        
+        try {
+            const response = await fetch('/api/media/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            console.log('Upload response status:', response.status, response.statusText);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Upload error response:', errorText);
+                throw new Error(`Failed to upload media: ${response.statusText} - ${errorText}`);
+            }
+
+            const result = await response.json();
+            console.log('Upload success result:', result);
+            return result;
+        } catch (error) {
+            console.error('Upload error:', error);
+            throw error;
+        }
+    }
+
     clearCredentials() {
         this.userId = null;
         this.password = null;

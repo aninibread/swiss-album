@@ -9,8 +9,7 @@ interface Env {
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
 // Simple authentication - just check user ID and password
@@ -20,6 +19,17 @@ async function authenticate(userId: string, password: string, env: Env) {
         .first();
     
     return user ? { userId: user.id as string } : null;
+}
+
+// Convert file to base64 for temporary display
+async function fileToBase64(file: File): Promise<string> {
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
 }
 
 export async function handleApiRequest(request: Request, env: Env): Promise<Response | null> {
@@ -149,7 +159,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                 ORDER BY sort_order
             `).bind(albumId).all();
 
-            // Get events with participants
+            // Get events with participants and media
             const events = await env.DB.prepare(`
                 SELECT e.*, 
                        GROUP_CONCAT(ep.user_id) as participant_ids
@@ -159,6 +169,15 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                 GROUP BY e.id
                 ORDER BY e.trip_day_id, e.sort_order
             `).bind(albumId).all();
+            
+            // Get media for all events
+            const media = await env.DB.prepare(`
+                SELECT em.*, e.trip_day_id
+                FROM event_media em
+                JOIN events e ON em.event_id = e.id
+                WHERE e.trip_day_id IN (SELECT id FROM trip_days WHERE album_id = ?)
+                ORDER BY em.created_at ASC
+            `).bind(albumId).all();
 
             // Get album participants
             const participants = await env.DB.prepare(`
@@ -166,33 +185,56 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                 WHERE album_id = ?
             `).bind(albumId).all();
 
-            // Format the data
+            // Format the data with media
             const formattedDays = days.results?.map((day: any) => {
                 const dayEvents = events.results?.filter((event: any) => event.trip_day_id === day.id) || [];
+                
+                // Count photos for this day
+                const dayMediaCount = media.results?.filter((m: any) => 
+                    dayEvents.some((e: any) => e.id === m.event_id)
+                ).length || 0;
                 
                 return {
                     id: day.id,
                     date: day.date,
                     title: day.title,
                     heroPhoto: day.hero_photo_url || "https://picsum.photos/800/600?random=1",
-                    photoCount: 0, // Will be updated when media is implemented
+                    photoCount: dayMediaCount,
                     backgroundColor: day.background_color || "bg-blue-100",
-                    events: dayEvents.map((event: any) => ({
-                        id: event.id,
-                        name: event.name,
-                        description: event.description,
-                        location: event.location,
-                        emoji: event.emoji,
-                        photos: [], // Will be populated from event_media table later
-                        videos: [],
-                        participants: event.participant_ids 
-                            ? event.participant_ids.split(',').map((userId: string) => ({
-                                id: userId.trim(),
-                                name: userId.trim(),
-                                avatar: `https://picsum.photos/80/80?random=${userId.trim().length}`
-                            }))
-                            : []
-                    }))
+                    events: dayEvents.map((event: any) => {
+                        // Get media for this event
+                        const eventMedia = media.results?.filter((m: any) => m.event_id === event.id) || [];
+                        const photos: string[] = [];
+                        const videos: string[] = [];
+                        
+                        eventMedia.forEach((m: any) => {
+                            // Use the media_url directly from database
+                            if (m.media_url) {
+                                if (m.media_type === 'video') {
+                                    videos.push(m.media_url);
+                                } else {
+                                    photos.push(m.media_url);
+                                }
+                            }
+                        });
+                        
+                        return {
+                            id: event.id,
+                            name: event.name,
+                            description: event.description,
+                            location: event.location,
+                            emoji: event.emoji,
+                            photos,
+                            videos,
+                            participants: event.participant_ids 
+                                ? event.participant_ids.split(',').map((userId: string) => ({
+                                    id: userId.trim(),
+                                    name: userId.trim(),
+                                    avatar: `https://picsum.photos/80/80?random=${userId.trim().length}`
+                                }))
+                                : []
+                        };
+                    })
                 };
             }) || [];
 
@@ -487,6 +529,219 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
             return new Response(JSON.stringify({ success: true }), {
                 headers: corsHeaders
             });
+        }
+        
+        // Upload media to event
+        if (url.pathname === '/api/media/upload' && request.method === 'POST') {
+            try {
+                const formData = await request.formData();
+                const userId = formData.get('userId') as string;
+                const password = formData.get('password') as string;
+                const eventId = formData.get('eventId') as string;
+                const files = formData.getAll('files') as File[];
+                
+                const user = await authenticate(userId, password, env);
+                
+                if (!user) {
+                    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+                        status: 401, 
+                        headers: corsHeaders
+                    });
+                }
+
+                const uploadedFiles = [];
+
+                for (const file of files) {
+                    console.log('Processing file:', file.name, file.type, file.size);
+                    
+                    // Get album_id for the event
+                    const eventInfo = await env.DB.prepare(`
+                        SELECT td.album_id 
+                        FROM events e
+                        JOIN trip_days td ON e.trip_day_id = td.id 
+                        WHERE e.id = ?
+                    `).bind(eventId).first();
+                    
+                    if (!eventInfo) {
+                        throw new Error('Event not found');
+                    }
+                    
+                    const albumId = (eventInfo as any).album_id;
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').split('.')[0];
+                    const randomId = Math.random().toString(36).substr(2, 9);
+                    const fileExtension = file.name.split('.').pop();
+                    const mediaType = file.type.startsWith('video/') ? 'videos' : 'photos';
+                    
+                    // Structure: /albums/{album_id}/media/{photos|videos}/{event_id}/{timestamp}_{random_id}.{ext}
+                    const fileName = `albums/${albumId}/media/${mediaType}/${eventId}/${timestamp}_${randomId}.${fileExtension}`;
+                    
+                    let fileUrl = '';
+                    let uploadSuccess = false;
+                    
+                    // Try to upload to R2 first
+                    try {
+                        console.log('Uploading to R2 bucket:', fileName, 'size:', file.size, 'type:', file.type);
+                        
+                        // Convert File to ArrayBuffer for R2
+                        const arrayBuffer = await file.arrayBuffer();
+                        
+                        // Upload to R2 with proper options
+                        const r2Object = await env.BUCKET.put(fileName, arrayBuffer, {
+                            httpMetadata: {
+                                contentType: file.type,
+                                contentDisposition: `inline; filename="${file.name}"`
+                            },
+                            customMetadata: {
+                                originalName: file.name,
+                                uploadedAt: new Date().toISOString(),
+                                eventId: eventId,
+                                fileSize: file.size.toString()
+                            }
+                        });
+                        
+                        if (r2Object) {
+                            console.log('File uploaded to R2 successfully:', fileName, 'etag:', r2Object.etag);
+                            uploadSuccess = true;
+                            
+                            // Save media info to database  
+                            const mediaId = `media-${timestamp}_${randomId}`;
+                            const mediaUrl = `/api/media/${mediaId}`;
+                            const mediaType = file.type.startsWith('video/') ? 'video' : 'photo';
+                            const sortOrder = Date.now(); // Use timestamp for sorting
+                            
+                            await env.DB.prepare(`
+                                INSERT INTO event_media (id, event_id, media_url, media_type, sort_order, uploaded_by, created_at)
+                                VALUES (?, ?, ?, ?, ?, ?, ?)
+                            `).bind(
+                                mediaId, 
+                                eventId, 
+                                mediaUrl,
+                                mediaType, 
+                                sortOrder,
+                                user.userId, 
+                                new Date().toISOString()
+                            ).run();
+                            
+                            console.log('Media saved to database:', mediaId);
+                            fileUrl = `/api/media/${mediaId}`;
+                        } else {
+                            console.log('R2 upload returned null (precondition failed?)');
+                            uploadSuccess = false;
+                            // Fallback to base64 for display if upload failed
+                            console.log('Converting to base64 for display:', fileName);
+                            fileUrl = `data:${file.type};base64,${await fileToBase64(file)}`;
+                        }
+                    } catch (r2Error) {
+                        console.error('R2 upload failed:', r2Error);
+                        uploadSuccess = false;
+                        // Fallback to base64 for display if upload failed
+                        console.log('Converting to base64 for display:', fileName);
+                        fileUrl = `data:${file.type};base64,${await fileToBase64(file)}`;
+                    }
+                    
+                    uploadedFiles.push({
+                        url: fileUrl,
+                        type: file.type.startsWith('video/') ? 'video' : 'photo',
+                        name: file.name,
+                        size: file.size,
+                        r2FileName: uploadSuccess ? fileName : null
+                    });
+                }
+
+                return new Response(JSON.stringify({ success: true, files: uploadedFiles }), {
+                    headers: {
+                        ...corsHeaders,
+                        'Content-Type': 'application/json'
+                    }
+                });
+            } catch (error) {
+                console.error('Media upload error:', error);
+                return new Response(JSON.stringify({ error: 'Upload failed', details: error.message }), { 
+                    status: 500, 
+                    headers: corsHeaders
+                });
+            }
+        }
+        
+        // Serve media files
+        if (url.pathname.match(/\/api\/media\/([^\/]+)$/) && request.method === 'GET') {
+            const mediaId = url.pathname.split('/')[3];
+            
+            try {
+                // We need to reconstruct the R2 key from mediaId and event info
+                // MediaId format: media-{timestamp}_{randomId}
+                // We need to find the event and album to build the R2 path
+                
+                // First get the event_id for this media
+                const mediaInfo = await env.DB.prepare(`
+                    SELECT em.*, e.id as event_id, td.album_id
+                    FROM event_media em
+                    JOIN events e ON em.event_id = e.id
+                    JOIN trip_days td ON e.trip_day_id = td.id
+                    WHERE em.id = ?
+                `).bind(mediaId).first();
+                
+                if (!mediaInfo) {
+                    return new Response('Media not found', { status: 404 });
+                }
+                
+                // Reconstruct the R2 key based on mediaId and event info
+                const mediaType = (mediaInfo as any).media_type === 'video' ? 'videos' : 'photos';
+                const albumId = (mediaInfo as any).album_id;
+                const eventId = (mediaInfo as any).event_id;
+                
+                // Extract timestamp and randomId from mediaId (format: media-{timestamp}_{randomId})
+                const idParts = mediaId.replace('media-', '');
+                
+                // Try to find the file in R2 by listing objects with the prefix
+                const r2Prefix = `albums/${albumId}/media/${mediaType}/${eventId}/`;
+                console.log('Looking for media with prefix:', r2Prefix);
+                console.log('Looking for mediaId:', mediaId);
+                
+                // List objects to find the matching file
+                const objects = await env.BUCKET.list({ prefix: r2Prefix });
+                console.log('Found objects:', objects.objects.map(o => o.key));
+                
+                // Find the object that matches our mediaId pattern
+                const matchingObject = objects.objects.find(obj => {
+                    const filename = obj.key.split('/').pop() || '';
+                    const filenameWithoutExt = filename.split('.')[0];
+                    return filenameWithoutExt === idParts;
+                });
+                
+                if (!matchingObject) {
+                    console.log('No matching object found for mediaId:', mediaId);
+                    return new Response('File not found in storage', { status: 404 });
+                }
+                
+                // Get file from R2
+                const r2Object = await env.BUCKET.get(matchingObject.key);
+                
+                if (!r2Object) {
+                    return new Response('File not found in storage', { status: 404 });
+                }
+                
+                // Determine content type from file extension
+                const fileExtension = matchingObject.key.split('.').pop()?.toLowerCase();
+                const contentType = fileExtension === 'mp4' ? 'video/mp4' : 
+                                   fileExtension === 'webm' ? 'video/webm' :
+                                   fileExtension === 'jpg' || fileExtension === 'jpeg' ? 'image/jpeg' :
+                                   fileExtension === 'png' ? 'image/png' :
+                                   fileExtension === 'webp' ? 'image/webp' : 'application/octet-stream';
+                
+                return new Response(r2Object.body, {
+                    headers: {
+                        ...corsHeaders,
+                        'Content-Type': contentType,
+                        'Content-Length': r2Object.size.toString(),
+                        'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
+                        'Content-Disposition': `inline; filename="${matchingObject.key.split('/').pop()}"`
+                    }
+                });
+            } catch (error) {
+                console.error('Error serving media:', error);
+                return new Response('Error serving media', { status: 500 });
+            }
         }
         
         return new Response(JSON.stringify({ error: 'Not found' }), { 

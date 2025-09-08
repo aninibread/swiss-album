@@ -277,6 +277,7 @@ export default function Home() {
   const [emojiPickerPosition, setEmojiPickerPosition] = useState<{top: number, left: number} | null>(null);
   const emojiButtonRefs = useRef<{[key: string]: HTMLButtonElement | null}>({});
   const [showAddParticipant, setShowAddParticipant] = useState<string>("");
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [addParticipantPosition, setAddParticipantPosition] = useState<{top: number, left: number} | null>(null);
   const addParticipantButtonRefs = useRef<{[key: string]: HTMLButtonElement | null}>({});
   const [showDatePicker, setShowDatePicker] = useState<string>("");
@@ -285,6 +286,7 @@ export default function Home() {
   const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState<boolean>(false);
   const [locationInputRef, setLocationInputRef] = useState<HTMLInputElement | null>(null);
+  const [locationDropdownPosition, setLocationDropdownPosition] = useState<{top: number, left: number, width: number} | null>(null);
 
   // Check authentication on mount
   useEffect(() => {
@@ -374,14 +376,26 @@ export default function Home() {
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
-      if (!target.closest('.location-autocomplete') && showLocationSuggestions) {
+      if (!target.closest('.location-autocomplete') && !target.closest('[data-location-dropdown]') && showLocationSuggestions) {
         setShowLocationSuggestions(false);
+        setLocationDropdownPosition(null);
+      }
+    };
+
+    const handleScroll = () => {
+      if (showLocationSuggestions) {
+        setShowLocationSuggestions(false);
+        setLocationDropdownPosition(null);
       }
     };
 
     if (showLocationSuggestions) {
       document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener('scroll', handleScroll, true);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('scroll', handleScroll, true);
+      };
     }
   }, [showLocationSuggestions]);
 
@@ -599,23 +613,87 @@ export default function Home() {
     );
   }
 
-  const addPhotosToEvent = (dayId: string, eventId: string, files: FileList) => {
-    const fileArray = Array.from(files);
-    const fileUrls = fileArray.map(file => URL.createObjectURL(file));
-    
-    setTripDays(prev => prev.map(day => 
-      day.id === dayId 
-        ? { 
-            ...day,
-            photoCount: day.photoCount + fileArray.length,
-            events: day.events.map(event => 
-              event.id === eventId 
-                ? { ...event, photos: [...event.photos, ...fileUrls] }
-                : event
-            )
-          }
-        : day
-    ));
+  const addPhotosToEvent = async (dayId: string, eventId: string, files: FileList) => {
+    console.log('addPhotosToEvent called with:', { dayId, eventId, filesCount: files.length });
+    try {
+      // Show loading state with temporary URLs
+      const fileArray = Array.from(files);
+      const tempUrls: string[] = [];
+      const tempPhotos: string[] = [];
+      const tempVideos: string[] = [];
+      
+      fileArray.forEach(file => {
+        const url = URL.createObjectURL(file);
+        tempUrls.push(url);
+        if (file.type.startsWith('video/')) {
+          tempVideos.push(url);
+        } else {
+          tempPhotos.push(url);
+        }
+      });
+      
+      // Update UI immediately with temporary URLs
+      setTripDays(prev => prev.map(day => 
+        day.id === dayId 
+          ? { 
+              ...day,
+              photoCount: day.photoCount + fileArray.length,
+              events: day.events.map(event => 
+                event.id === eventId 
+                  ? { 
+                      ...event,
+                      photos: [...event.photos, ...tempPhotos],
+                      videos: [...event.videos, ...tempVideos]
+                    }
+                  : event
+              )
+            }
+          : day
+      ));
+
+      // Upload to backend
+      console.log('Starting backend upload...');
+      const result = await api.uploadMedia(eventId, files);
+      console.log('Backend upload result:', result);
+      
+      if (result.success) {
+        // Replace temporary URLs with real ones
+        const realPhotos = result.files.filter((f: any) => f.type === 'photo').map((f: any) => f.url);
+        const realVideos = result.files.filter((f: any) => f.type === 'video').map((f: any) => f.url);
+        
+        setTripDays(prev => prev.map(day => 
+          day.id === dayId 
+            ? { 
+                ...day,
+                events: day.events.map(event => 
+                  event.id === eventId 
+                    ? { 
+                        ...event,
+                        photos: [
+                          ...event.photos.filter(url => !tempPhotos.includes(url)),
+                          ...realPhotos
+                        ],
+                        videos: [
+                          ...event.videos.filter(url => !tempVideos.includes(url)),
+                          ...realVideos
+                        ]
+                      }
+                    : event
+                )
+              }
+            : day
+        ));
+
+        // Clean up temporary URLs
+        tempUrls.forEach(url => URL.revokeObjectURL(url));
+      }
+    } catch (error) {
+      console.error('Failed to upload media:', error);
+      setError('Failed to upload files');
+      
+      // If upload fails, we could optionally remove the temporary URLs
+      // or leave them as a fallback for offline viewing
+    }
   };
 
   const startEditingEvent = (eventId: string, currentName: string, currentDescription: string, currentEmoji: string, currentLocation?: string) => {
@@ -1145,6 +1223,7 @@ export default function Home() {
     setEditLocation(locationName);
     setShowLocationSuggestions(false);
     setLocationSuggestions([]);
+    setLocationDropdownPosition(null);
   };
 
   return (
@@ -1524,9 +1603,22 @@ export default function Home() {
                                     onChange={(e) => {
                                       setEditLocation(e.target.value);
                                       if (e.target.value.length >= 2) {
+                                        // Get the input field coordinates directly
+                                        const inputRect = e.target.getBoundingClientRect();
+                                        console.log('Input rect:', inputRect);
+                                        console.log('Window scroll:', window.scrollY, window.scrollX);
+                                        
+                                        const position = {
+                                          top: inputRect.bottom + 4,
+                                          left: inputRect.left,
+                                          width: inputRect.width
+                                        };
+                                        console.log('Setting position:', position);
+                                        setLocationDropdownPosition(position);
                                         setShowLocationSuggestions(true);
                                       } else {
                                         setShowLocationSuggestions(false);
+                                        setLocationDropdownPosition(null);
                                       }
                                     }}
                                     onKeyDown={(e) => {
@@ -1538,8 +1630,15 @@ export default function Home() {
                                         }
                                       }
                                     }}
-                                    onFocus={() => {
+                                    onFocus={(e) => {
                                       if (editLocation && editLocation.length >= 2) {
+                                        // Get the input field coordinates directly
+                                        const inputRect = e.target.getBoundingClientRect();
+                                        setLocationDropdownPosition({
+                                          top: inputRect.bottom + 4,
+                                          left: inputRect.left,
+                                          width: inputRect.width
+                                        });
                                         setShowLocationSuggestions(true);
                                       }
                                     }}
@@ -1547,29 +1646,6 @@ export default function Home() {
                                     placeholder="Add location..."
                                     ref={(el) => setLocationInputRef(el)}
                                   />
-                                  
-                                  {/* Location Suggestions Dropdown */}
-                                  {showLocationSuggestions && locationSuggestions.length > 0 && (
-                                    <div className="absolute top-full left-0 right-0 bg-white/95 backdrop-blur-sm border border-stone-300/50 rounded-lg shadow-lg py-1 z-[9999] max-h-48 overflow-y-auto">
-                                      {locationSuggestions.map((suggestion, index) => (
-                                        <button
-                                          key={index}
-                                          onClick={() => handleLocationSelect(suggestion)}
-                                          className="w-full text-left px-3 py-2 text-xs text-stone-700 hover:bg-stone-100/70 transition-colors"
-                                        >
-                                          <div className="font-medium">
-                                            {suggestion.properties.name || suggestion.properties.formatted}
-                                          </div>
-                                          {suggestion.properties.country && (
-                                            <div className="text-stone-500 text-xs mt-0.5">
-                                              {suggestion.properties.country}
-                                              {suggestion.properties.state && `, ${suggestion.properties.state}`}
-                                            </div>
-                                          )}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
                                 </div>
                               </div>
                               
@@ -1708,7 +1784,7 @@ export default function Home() {
                       </div>
                       
                       {/* Event photos grid */}
-                      <div className="columns-1 sm:columns-2 gap-3 space-y-3 mb-4 relative" style={{columnFill: 'balance', zIndex: 1}}>
+                      <div className="columns-1 sm:columns-2 gap-3 space-y-3 mb-4 relative" style={{columnFill: 'balance', zIndex: 0}}>
                         {event.photos.map((photo, index) => (
                           <div key={index} className="break-inside-avoid mb-3 bg-white/40 backdrop-blur-sm rounded-2xl overflow-hidden group shadow-sm border border-stone-forest/30">
                             <img
@@ -1742,14 +1818,20 @@ export default function Home() {
                         ))}
                         
                         {/* Add to this event - discrete */}
-                        <div className="break-inside-avoid mb-3">
+                        <div className="break-inside-avoid mb-3 relative z-0">
                           <label className="cursor-pointer block">
                             <input
                               type="file"
                               multiple
                               accept="image/*,video/*"
                               className="hidden"
-                              onChange={(e) => e.target.files && addPhotosToEvent(day.id, event.id, e.target.files)}
+                              onChange={async (e) => {
+                                if (e.target.files) {
+                                  await addPhotosToEvent(day.id, event.id, e.target.files);
+                                  // Reset the input so the same file can be selected again
+                                  e.target.value = '';
+                                }
+                              }}
                             />
                             <div className="h-8 bg-stone-200/30 backdrop-blur-sm rounded-lg border border-dashed border-stone-300/50 flex items-center justify-center hover:bg-stone-200/40 hover:border-stone-300/70 transition-all group relative z-0">
                               <div className="flex items-center space-x-1">
@@ -1986,6 +2068,41 @@ export default function Home() {
                 </button>
               ))}
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      
+      {/* Portal for location suggestions */}
+      {showLocationSuggestions && locationDropdownPosition && locationSuggestions.length > 0 && typeof document !== 'undefined' && createPortal(
+        <div 
+          data-location-dropdown
+          className="fixed"
+          style={{
+            top: locationDropdownPosition.top,
+            left: locationDropdownPosition.left,
+            width: locationDropdownPosition.width,
+            zIndex: 9999
+          }}
+        >
+          <div className="bg-white/95 backdrop-blur-sm border border-stone-300/50 rounded-lg shadow-lg py-1 max-h-48 overflow-y-auto">
+            {locationSuggestions.map((suggestion, index) => (
+              <button
+                key={index}
+                onClick={() => handleLocationSelect(suggestion)}
+                className="w-full text-left px-3 py-2 text-xs text-stone-700 hover:bg-stone-100/70 transition-colors"
+              >
+                <div className="font-medium">
+                  {suggestion.properties.name || suggestion.properties.formatted}
+                </div>
+                {suggestion.properties.country && (
+                  <div className="text-stone-500 text-xs mt-0.5">
+                    {suggestion.properties.country}
+                    {suggestion.properties.state && `, ${suggestion.properties.state}`}
+                  </div>
+                )}
+              </button>
+            ))}
           </div>
         </div>,
         document.body

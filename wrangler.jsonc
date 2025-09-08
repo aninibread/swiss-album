@@ -7,6 +7,7 @@
 	"name": "swiss-album",
 	"compatibility_date": "2025-04-04",
 	"main": "./workers/app.ts",
+	"account_id": "323f42859527b406beadd91bff779583",
 	"d1_databases": [
 		{
 			"binding": "DB",
