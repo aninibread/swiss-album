@@ -7,8 +7,37 @@
 	"name": "swiss-album",
 	"compatibility_date": "2025-04-04",
 	"main": "./workers/app.ts",
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "swiss-album-db",
+			"database_id": "0225d03c-00ae-410e-b45b-bf340ea6ed40",
+			"experimental_remote": true
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "BUCKET",
+			"bucket_name": "swiss-album-media",
+			"experimental_remote": true
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "CACHE",
+			"id": "f9eff9e7677a464bb945fbfc70ae74d2",
+			"experimental_remote": true
+		},
+		{
+			"binding": "REALTIME",
+			"id": "d8bda00717e040f2bdc7be2b7bc1637e",
+			"experimental_remote": true
+		}
+	],
 	"vars": {
-		"VALUE_FROM_CLOUDFLARE": "Hello from Cloudflare"
+		"MAX_FILE_SIZE": "10485760",
+		"ALLOWED_IMAGE_TYPES": "image/jpeg,image/png,image/webp",
+		"ALLOWED_VIDEO_TYPES": "video/mp4,video/webm"
 	},
 	"observability": {
 		"enabled": true

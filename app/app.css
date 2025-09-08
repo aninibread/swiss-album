@@ -3,13 +3,147 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-dark-forest: 31 54 61;
+  --color-teal-blue: 64 121 140;
+  --color-sage-teal: 112 169 161;
+  --color-mint-sage: 158 193 163;
+  --color-pale-mint: 207 224 195;
+  --color-natural-green: 176 196 173;
+  --color-stone-forest: 95 120 95;
+  --color-bright-sky: 135 206 235;
 }
+
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.text-dark-forest { color: rgb(var(--color-dark-forest)); }
+.text-teal-blue { color: rgb(var(--color-teal-blue)); }
+.text-sage-teal { color: rgb(var(--color-sage-teal)); }
+.text-mint-sage { color: rgb(var(--color-mint-sage)); }
+.text-pale-mint { color: rgb(var(--color-pale-mint)); }
+
+.bg-dark-forest { background-color: rgb(var(--color-dark-forest)); }
+.bg-teal-blue { background-color: rgb(var(--color-teal-blue)); }
+.bg-sage-teal { background-color: rgb(var(--color-sage-teal)); }
+.bg-mint-sage { background-color: rgb(var(--color-mint-sage)); }
+.bg-pale-mint { background-color: rgb(var(--color-pale-mint)); }
+
+.bg-dark-forest\/20 { background-color: rgb(var(--color-dark-forest) / 0.2); }
+.bg-dark-forest\/30 { background-color: rgb(var(--color-dark-forest) / 0.3); }
+.bg-dark-forest\/40 { background-color: rgb(var(--color-dark-forest) / 0.4); }
+.bg-dark-forest\/50 { background-color: rgb(var(--color-dark-forest) / 0.5); }
+.bg-teal-blue\/20 { background-color: rgb(var(--color-teal-blue) / 0.2); }
+.bg-teal-blue\/30 { background-color: rgb(var(--color-teal-blue) / 0.3); }
+.bg-teal-blue\/40 { background-color: rgb(var(--color-teal-blue) / 0.4); }
+.bg-sage-teal\/20 { background-color: rgb(var(--color-sage-teal) / 0.2); }
+.bg-sage-teal\/30 { background-color: rgb(var(--color-sage-teal) / 0.3); }
+.bg-sage-teal\/40 { background-color: rgb(var(--color-sage-teal) / 0.4); }
+.bg-mint-sage\/20 { background-color: rgb(var(--color-mint-sage) / 0.2); }
+.bg-mint-sage\/30 { background-color: rgb(var(--color-mint-sage) / 0.3); }
+.bg-mint-sage\/40 { background-color: rgb(var(--color-mint-sage) / 0.4); }
+.bg-pale-mint\/20 { background-color: rgb(var(--color-pale-mint) / 0.2); }
+.bg-pale-mint\/30 { background-color: rgb(var(--color-pale-mint) / 0.3); }
+.bg-pale-mint\/40 { background-color: rgb(var(--color-pale-mint) / 0.4); }
+.bg-natural-green\/20 { background-color: rgb(var(--color-natural-green) / 0.2); }
+
+.text-stone-forest { color: rgb(var(--color-stone-forest)); }
+.bg-stone-forest { background-color: rgb(var(--color-stone-forest)); }
+.bg-stone-forest\/20 { background-color: rgb(var(--color-stone-forest) / 0.2); }
+.bg-stone-forest\/30 { background-color: rgb(var(--color-stone-forest) / 0.3); }
+.bg-stone-forest\/40 { background-color: rgb(var(--color-stone-forest) / 0.4); }
+.bg-stone-forest\/50 { background-color: rgb(var(--color-stone-forest) / 0.5); }
+.bg-stone-forest\/60 { background-color: rgb(var(--color-stone-forest) / 0.6); }
+.bg-stone-forest\/70 { background-color: rgb(var(--color-stone-forest) / 0.7); }
+.border-stone-forest { border-color: rgb(var(--color-stone-forest)); }
+.border-stone-forest\/30 { border-color: rgb(var(--color-stone-forest) / 0.3); }
+.border-stone-forest\/40 { border-color: rgb(var(--color-stone-forest) / 0.4); }
+.border-stone-forest\/50 { border-color: rgb(var(--color-stone-forest) / 0.5); }
+.border-stone-forest\/60 { border-color: rgb(var(--color-stone-forest) / 0.6); }
+
+.bg-bright-sky\/20 { background-color: rgb(var(--color-bright-sky) / 0.2); }
+.bg-bright-sky\/25 { background-color: rgb(var(--color-bright-sky) / 0.25); }
+.bg-bright-sky\/30 { background-color: rgb(var(--color-bright-sky) / 0.3); }
+.border-bright-sky\/20 { border-color: rgb(var(--color-bright-sky) / 0.2); }
+.border-bright-sky\/25 { border-color: rgb(var(--color-bright-sky) / 0.25); }
+.border-bright-sky\/30 { border-color: rgb(var(--color-bright-sky) / 0.3); }
+.bg-bright-sky\/15 { background-color: rgb(var(--color-bright-sky) / 0.15); }
+
+.border-dark-forest { border-color: rgb(var(--color-dark-forest)); }
+.border-teal-blue { border-color: rgb(var(--color-teal-blue)); }
+.border-sage-teal { border-color: rgb(var(--color-sage-teal)); }
+.border-mint-sage { border-color: rgb(var(--color-mint-sage)); }
+.border-pale-mint { border-color: rgb(var(--color-pale-mint)); }
+
+.border-dark-forest\/30 { border-color: rgb(var(--color-dark-forest) / 0.3); }
+.border-dark-forest\/40 { border-color: rgb(var(--color-dark-forest) / 0.4); }
+.border-teal-blue\/30 { border-color: rgb(var(--color-teal-blue) / 0.3); }
+.border-teal-blue\/40 { border-color: rgb(var(--color-teal-blue) / 0.4); }
+.border-sage-teal\/30 { border-color: rgb(var(--color-sage-teal) / 0.3); }
+.border-sage-teal\/40 { border-color: rgb(var(--color-sage-teal) / 0.4); }
+.border-mint-sage\/30 { border-color: rgb(var(--color-mint-sage) / 0.3); }
+.border-mint-sage\/40 { border-color: rgb(var(--color-mint-sage) / 0.4); }
 
 html,
 body {
-  @apply bg-white dark:bg-gray-950;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+}
 
-  @media (prefers-color-scheme: dark) {
-    color-scheme: dark;
-  }
+/* Photo quality optimization */
+img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: optimize-quality;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Ensure proper aspect ratio handling */
+.photo-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.photo-container img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+}
+
+/* Drag and drop visual feedback */
+.drag-over {
+  background-color: rgba(135, 206, 235, 0.1) !important;
+  border: 2px dashed rgba(135, 206, 235, 0.5) !important;
+  transform: scale(1.02);
+  box-shadow: 0 8px 32px rgba(135, 206, 235, 0.2) !important;
+}
+
+.drag-over::before {
+  content: "Drop here";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(135, 206, 235, 0.9);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 100;
+  pointer-events: none;
 }
