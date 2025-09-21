@@ -56,7 +56,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         
         // Login route
         if (url.pathname === '/api/auth/login' && request.method === 'POST') {
-            const { userId, password } = await request.json();
+            const { userId, password } = await request.json() as { userId: string; password: string };
             
             const user = await authenticate(userId, password, env);
             
@@ -77,7 +77,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         
         // Register route
         if (url.pathname === '/api/auth/register' && request.method === 'POST') {
-            const { userId, password } = await request.json();
+            const { userId, password } = await request.json() as { userId: string; password: string };
             
             // Check if user already exists
             const existing = await env.DB.prepare('SELECT id FROM users WHERE id = ?')
@@ -103,7 +103,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         
         // Albums route
         if (url.pathname === '/api/albums' && request.method === 'POST') {
-            const { userId, password } = await request.json();
+            const { userId, password } = await request.json() as { userId: string; password: string };
             const user = await authenticate(userId, password, env);
             
             if (!user) {
@@ -128,7 +128,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         // Full album data route
         if (url.pathname.match(/\/api\/albums\/([^\/]+)\/full$/) && request.method === 'POST') {
             const albumId = url.pathname.split('/')[3];
-            const { userId, password } = await request.json();
+            const { userId, password } = await request.json() as { userId: string; password: string };
             const user = await authenticate(userId, password, env);
             
             if (!user) {
@@ -273,7 +273,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         // Update event
         if (url.pathname.match(/\/api\/events\/([^\/]+)$/) && request.method === 'PUT') {
             const eventId = url.pathname.split('/')[3];
-            const { userId, password, name, description, emoji, location } = await request.json();
+            const { userId, password, name, description, emoji, location } = await request.json() as { userId: string; password: string; name: string; description: string; emoji: string; location: string };
             const user = await authenticate(userId, password, env);
             
             if (!user) {
@@ -299,7 +299,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                 });
             } catch (dbError) {
                 console.error('Database error updating event:', dbError);
-                return new Response(JSON.stringify({ error: 'Database error', details: dbError.message }), { 
+                return new Response(JSON.stringify({ error: 'Database error', details: dbError instanceof Error ? dbError.message : 'Unknown error' }), { 
                     status: 500, 
                     headers: corsHeaders
                 });
@@ -308,7 +308,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         
         // Add new event
         if (url.pathname === '/api/events' && request.method === 'POST') {
-            const { userId, password, tripDayId, name, description, emoji, location, sortOrder, participantIds } = await request.json();
+            const { userId, password, tripDayId, name, description, emoji, location, sortOrder, participantIds } = await request.json() as { userId: string; password: string; tripDayId: string; name: string; description: string; emoji: string; location: string; sortOrder: number; participantIds: string[] };
             const user = await authenticate(userId, password, env);
             
             if (!user) {
@@ -346,7 +346,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                 });
             } catch (dbError) {
                 console.error('Database error creating event:', dbError);
-                return new Response(JSON.stringify({ error: 'Database error', details: dbError.message }), { 
+                return new Response(JSON.stringify({ error: 'Database error', details: dbError instanceof Error ? dbError.message : 'Unknown error' }), { 
                     status: 500, 
                     headers: corsHeaders
                 });
@@ -356,7 +356,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         // Delete event
         if (url.pathname.match(/\/api\/events\/([^\/]+)$/) && request.method === 'DELETE') {
             const eventId = url.pathname.split('/')[3];
-            const { userId, password } = await request.json();
+            const { userId, password } = await request.json() as { userId: string; password: string };
             const user = await authenticate(userId, password, env);
             
             if (!user) {
@@ -376,7 +376,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         // Update day
         if (url.pathname.match(/\/api\/trip-days\/([^\/]+)$/) && request.method === 'PUT') {
             const dayId = url.pathname.split('/')[3];
-            const { userId, password, title, date } = await request.json();
+            const { userId, password, title, date } = await request.json() as { userId: string; password: string; title: string; date: string };
             const user = await authenticate(userId, password, env);
             
             if (!user) {
@@ -432,7 +432,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         
         // Create new day
         if (url.pathname === '/api/trip-days' && request.method === 'POST') {
-            const { userId, password, albumId, title, date } = await request.json();
+            const { userId, password, albumId, title, date } = await request.json() as { userId: string; password: string; albumId: string; title: string; date: string };
             const user = await authenticate(userId, password, env);
             
             if (!user) {
@@ -481,7 +481,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         // Delete day
         if (url.pathname.match(/\/api\/trip-days\/([^\/]+)$/) && request.method === 'DELETE') {
             const dayId = url.pathname.split('/')[3];
-            const { userId, password } = await request.json();
+            const { userId, password } = await request.json() as { userId: string; password: string };
             const user = await authenticate(userId, password, env);
             
             if (!user) {
@@ -514,7 +514,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         // Add/remove event participants
         if (url.pathname.match(/\/api\/events\/([^\/]+)\/participants$/) && request.method === 'POST') {
             const eventId = url.pathname.split('/')[3];
-            const { userId, password, participantId, action } = await request.json(); // action: 'add' or 'remove'
+            const { userId, password, participantId, action } = await request.json() as { userId: string; password: string; participantId: string; action: string }; // action: 'add' or 'remove'
             const user = await authenticate(userId, password, env);
             
             if (!user) {
@@ -578,9 +578,14 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                     
                     const albumId = (eventInfo as any).album_id;
                     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').split('.')[0];
-                    const randomId = Math.random().toString(36).substr(2, 9);
-                    const fileExtension = file.name.split('.').pop();
+                    const randomId = Math.random().toString(36).substring(2, 11);
+                    let fileExtension = file.name.split('.').pop();
                     const mediaType = file.type.startsWith('video/') ? 'videos' : 'photos';
+                    
+                    // Ensure video files have .mp4 extension (converted files should already have this)
+                    if (file.type.startsWith('video/') && file.type !== 'video/mp4') {
+                        fileExtension = 'mp4';
+                    }
                     
                     // Structure: /albums/{album_id}/media/{photos|videos}/{event_id}/{timestamp}_{random_id}.{ext}
                     const fileName = `albums/${albumId}/media/${mediaType}/${eventId}/${timestamp}_${randomId}.${fileExtension}`;
@@ -596,9 +601,14 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                         const arrayBuffer = await file.arrayBuffer();
                         
                         // Upload to R2 with proper options
+                        // Ensure proper content type for converted videos
+                        const contentType = file.type.startsWith('video/') && fileExtension === 'mp4' 
+                            ? 'video/mp4' 
+                            : file.type;
+                            
                         const r2Object = await env.BUCKET.put(fileName, arrayBuffer, {
                             httpMetadata: {
-                                contentType: file.type,
+                                contentType: contentType,
                                 contentDisposition: `inline; filename="${file.name}"`
                             },
                             customMetadata: {
@@ -666,7 +676,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                 });
             } catch (error) {
                 console.error('Media upload error:', error);
-                return new Response(JSON.stringify({ error: 'Upload failed', details: error.message }), { 
+                return new Response(JSON.stringify({ error: 'Upload failed', details: error instanceof Error ? error.message : 'Unknown error' }), { 
                     status: 500, 
                     headers: corsHeaders
                 });
@@ -764,7 +774,9 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                     'Cache-Control': 'public, max-age=31536000, immutable',
                     'ETag': r2Object.etag || '',
                     'Content-Disposition': `inline; filename="${actualR2Key.split('/').pop()}"`,
-                    'Accept-Ranges': 'bytes'
+                    'Accept-Ranges': 'bytes',
+                    'X-Content-Type-Options': 'nosniff',
+                    'X-Frame-Options': 'SAMEORIGIN'
                 };
                 
                 if (status === 206 && range) {
@@ -780,7 +792,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                     headers['Content-Length'] = r2Object.size.toString();
                 }
                 
-                return new Response(r2Object.body, { status, headers });
+                return new Response((r2Object as R2ObjectBody).body, { status, headers });
             } catch (error) {
                 console.error('Error serving media:', error);
                 return new Response('Error serving media', { status: 500 });
@@ -790,7 +802,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         // Delete media
         if (url.pathname.match(/\/api\/media\/([^\/]+)$/) && request.method === 'DELETE') {
             const mediaId = url.pathname.split('/')[3];
-            const { userId, password } = await request.json();
+            const { userId, password } = await request.json() as { userId: string; password: string };
             const user = await authenticate(userId, password, env);
             
             if (!user) {

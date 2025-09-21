@@ -79,7 +79,20 @@ class ApiService {
     }
 
     async getAlbumFull(albumId: string) {
-        return this.request(`/api/albums/${albumId}/full`);
+        const credentials = this.getCredentials();
+        const response = await fetch(`/api/albums/${albumId}/full`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(credentials)
+        });
+
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.statusText}`);
+        }
+
+        return response.json();
     }
 
     async updateEvent(eventId: string, eventData: { name: string; description: string; emoji: string; location?: string }) {
@@ -236,15 +249,23 @@ class ApiService {
         console.log('Upload media - credentials:', credentials);
         console.log('Upload media - eventId:', eventId, 'files:', files.length);
         
+        // Import video converter
+        const { convertFiles } = await import('../utils/videoConverter');
+        
+        // Convert .mov files to .mp4 before uploading
+        const convertedFiles = await convertFiles(files, (fileIndex, progress) => {
+            console.log(`Converting file ${fileIndex + 1}/${files.length}:`, progress);
+        });
+        
         const formData = new FormData();
         
         formData.append('userId', credentials.userId || '');
         formData.append('password', credentials.password || '');
         formData.append('eventId', eventId);
         
-        for (let i = 0; i < files.length; i++) {
-            formData.append('files', files[i]);
-            console.log('Adding file to FormData:', files[i].name, files[i].type);
+        for (let i = 0; i < convertedFiles.length; i++) {
+            formData.append('files', convertedFiles[i]);
+            console.log('Adding file to FormData:', convertedFiles[i].name, convertedFiles[i].type);
         }
         
         try {

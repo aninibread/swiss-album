@@ -51,6 +51,51 @@ interface Participant {
 }
 
 
+// Simple video component with proper container sizing
+const VideoContainer: React.FC<{
+  src: string;
+  className?: string;
+  onError?: (e: React.SyntheticEvent<HTMLVideoElement, Event>) => void;
+  onClick?: () => void;
+  [key: string]: any;
+}> = ({ src, className, onError, onClick, ...props }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [aspectRatio, setAspectRatio] = useState<number | null>(null);
+
+  const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    const ratio = video.videoWidth / video.videoHeight;
+    setAspectRatio(ratio);
+    props.onLoadedMetadata?.(e);
+  };
+
+  return (
+    <div 
+      style={{
+        width: 'fit-content',
+        maxWidth: '100%',
+        aspectRatio: aspectRatio ? aspectRatio.toString() : undefined,
+        margin: '0 auto'
+      }}
+    >
+      <video
+        ref={videoRef}
+        src={src}
+        className={className}
+        onError={onError}
+        onClick={onClick}
+        onLoadedMetadata={handleLoadedMetadata}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain'
+        }}
+        {...props}
+      />
+    </div>
+  );
+};
+
 export default function Home() {
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -1291,7 +1336,7 @@ export default function Home() {
                   {getRandomHighlights().map((media, index) => (
                     <div key={`highlight-${media.url}-${index}`} className="break-inside-avoid mb-3 bg-white/50 backdrop-blur-sm rounded-2xl overflow-hidden hover:scale-105 transition-all cursor-pointer shadow-sm border border-stone-forest/30 relative">
                       {media.type === 'video' ? (
-                        <video
+                        <VideoContainer
                           src={media.url}
                           className="w-full h-auto object-contain"
                           controls
@@ -1842,12 +1887,12 @@ export default function Home() {
                         {event.videos.map((video, index) => {
                           const videoUrl = typeof video === 'string' ? video : video.url;
                           return (
-                          <div key={videoUrl || `video-${event.id}-${index}`} className="break-inside-avoid mb-3 aspect-video bg-white/40 backdrop-blur-sm rounded-2xl overflow-hidden group shadow-sm border border-stone-forest/30">
-                            <div className="relative w-full h-full">
-                              <video
+                          <div key={videoUrl || `video-${event.id}-${index}`} className="break-inside-avoid mb-3 bg-white/40 backdrop-blur-sm rounded-2xl overflow-hidden group shadow-sm border border-stone-forest/30">
+                            <div className="relative">
+                              <VideoContainer
                                 key={videoUrl}
                                 src={videoUrl}
-                                className="w-full h-full object-cover"
+                                className="w-full h-auto"
                                 controls
                                 preload="metadata"
                                 playsInline
@@ -2215,7 +2260,7 @@ export default function Home() {
               ×
             </button>
             {selectedMedia?.type === 'video' ? (
-              <video
+              <VideoContainer
                 src={selectedImage}
                 className="max-w-full max-h-[90vh] object-contain"
                 controls
