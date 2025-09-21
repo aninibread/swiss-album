@@ -90,51 +90,51 @@ export function EventCard({
       onDrop={(e) => onDrop(e, dayId, event.id)}
     >
       {/* Timeline Node */}
-      <div className="absolute left-4 top-2 w-4 h-4 bg-stone-forest rounded-full border-4 border-white shadow-md z-10"></div>
+      <div className="absolute left-2 sm:left-4 top-2 w-3 h-3 sm:w-4 sm:h-4 bg-stone-forest rounded-full border-2 sm:border-4 border-white shadow-md z-10"></div>
       
       {/* Event Content */}
-      <div className="ml-16">
-        <div className={`bg-stone-200/20 backdrop-blur-sm rounded-2xl p-6 border border-stone-300/25 shadow-lg mb-4 transition-all ${
+      <div className="ml-8 sm:ml-16">
+        <div className={`bg-stone-200/20 backdrop-blur-sm rounded-2xl p-3 sm:p-6 border border-stone-300/25 shadow-lg mb-4 transition-all ${
           isDragging ? 'opacity-50 transform scale-95' : 'opacity-100'
         } ${!isEditing ? 'cursor-grab active:cursor-grabbing hover:shadow-xl' : ''}`}>
           <div className="relative">
             {isEditing ? (
               <>
                 {/* Edit Mode */}
-                <div className="absolute top-0 right-0 flex items-center space-x-1">
+                <div className="absolute top-0 right-0 flex items-center space-x-1 z-20">
                   <button
                     onClick={() => onSaveEdit(dayId, event.id)}
                     disabled={isSaving}
-                    className="p-1 rounded-lg hover:bg-stone-200/50 transition-colors"
+                    className="p-1.5 sm:p-1 rounded-lg hover:bg-stone-200/50 transition-colors touch-manipulation"
                     title="Save changes"
                   >
-                    <svg className="w-4 h-4 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 sm:w-4 sm:h-4 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </button>
                   {(!event.photos || event.photos.length === 0) && (!event.videos || event.videos.length === 0) && (
                     <button
                       onClick={() => onDeleteEvent(dayId, event.id)}
-                      className="p-1 rounded-lg hover:bg-red-200/50 transition-colors"
+                      className="p-1.5 sm:p-1 rounded-lg hover:bg-red-200/50 transition-colors touch-manipulation"
                       title="Delete event"
                     >
-                      <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 sm:w-4 sm:h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                     </button>
                   )}
                 </div>
 
-                <div className="flex items-start mb-1">
+                <div className="flex items-start mb-1 pr-16 sm:pr-20">
                   <button
                     ref={(el) => { emojiButtonRefs.current[`edit-${event.id}`] = el; }}
                     onClick={() => onOpenEmojiPicker(`edit-${event.id}`)}
-                    className="emoji-picker-container relative text-lg mr-2 hover:scale-110 transition-transform cursor-pointer bg-transparent border border-stone-300/30 rounded-md w-8 h-8 flex items-center justify-center hover:border-stone-400/50"
+                    className="emoji-picker-container relative text-lg sm:text-lg mr-2 hover:scale-110 transition-transform cursor-pointer bg-transparent border border-stone-300/30 rounded-md w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center hover:border-stone-400/50 touch-manipulation"
                     title="Click to change emoji"
                   >
                     {editEmoji || '🎉'}
                   </button>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <input
                     type="text"
                     value={editTitle}
@@ -149,29 +149,31 @@ export function EventCard({
                         onCancelEdit();
                       }
                     }}
-                    className="text-lg font-display font-medium text-stone-900 bg-transparent border-none outline-none focus:outline-none w-full resize-none hover:bg-white/10 focus:bg-white/10 rounded px-1 py-0.5 -mx-1 -my-0.5"
+                    className="text-base sm:text-lg font-display font-medium text-stone-900 bg-transparent border-none outline-none focus:outline-none w-full resize-none hover:bg-white/10 focus:bg-white/10 rounded px-1 py-0.5 -mx-1 -my-0.5"
                     placeholder="Event name..."
                     autoFocus
                     />
                   </div>
                 </div>
                 
-                <textarea
-                    value={editDescription}
-                    onChange={(e) => onSetEditDescription(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') {
-                        onCancelEdit();
-                      }
-                    }}
-                    className="text-sm text-stone-700 leading-relaxed bg-transparent border-none outline-none w-full resize-none cursor-text hover:bg-white/10 focus:bg-white/10 rounded px-1 py-0.5 -mx-1 -my-0.5"
-                    placeholder="Click to edit description..."
-                    rows={2}
-                    style={{
-                      minHeight: '40px',
-                      lineHeight: '1.5'
-                    }}
-                  />
+                <div className="pr-16 sm:pr-20">
+                  <textarea
+                      value={editDescription}
+                      onChange={(e) => onSetEditDescription(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          onCancelEdit();
+                        }
+                      }}
+                      className="text-sm text-stone-700 leading-relaxed bg-transparent border-none outline-none w-full resize-none cursor-text hover:bg-white/10 focus:bg-white/10 rounded px-1 py-0.5 -mx-1 -my-0.5"
+                      placeholder="Click to edit description..."
+                      rows={2}
+                      style={{
+                        minHeight: '40px',
+                        lineHeight: '1.5'
+                      }}
+                    />
+                </div>
                 
                 {/* Edit Mode - Location */}
                 <div className="mb-3 flex items-center location-autocomplete relative">

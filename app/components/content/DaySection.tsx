@@ -36,7 +36,7 @@ export function DaySection({
   children
 }: DaySectionProps) {
   return (
-    <div key={day.id} id={`day-${day.id}`} className="mb-12">
+    <div key={day.id} id={`day-${day.id}`} className="mb-8 sm:mb-12">
       <DayHeader
         day={day}
         editingDay={editingDay}
@@ -56,9 +56,9 @@ export function DaySection({
       {/* Events Timeline */}
       <div className="relative">
         {/* Timeline Line */}
-        <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-stone-forest/40 backdrop-blur-sm"></div>
+        <div className="absolute left-4 sm:left-6 top-0 bottom-0 w-0.5 bg-stone-forest/40 backdrop-blur-sm"></div>
         
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {children}
         </div>
       </div>

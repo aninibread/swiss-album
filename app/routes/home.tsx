@@ -487,17 +487,17 @@ export default function Home() {
                 ))}
                 
                 {/* Add New Event Button */}
-                <div className="relative ml-16">
-                  <div className="absolute left-4 top-2 w-4 h-4 bg-stone-forest rounded-full border-4 border-white shadow-md z-10 -ml-16"></div>
+                <div className="relative ml-8 sm:ml-16">
+                  <div className="absolute left-2 sm:left-4 top-2 w-3 h-3 sm:w-4 sm:h-4 bg-stone-forest rounded-full border-2 sm:border-4 border-white shadow-md z-10 -ml-8 sm:-ml-16"></div>
                   <button
                     onClick={() => addNewEvent(day.id)}
-                    className="w-full bg-stone-100/50 backdrop-blur-sm rounded-2xl p-4 border-2 border-dashed border-stone-300/50 hover:border-stone-400/60 hover:bg-stone-100/70 transition-all group"
+                    className="w-full bg-stone-100/50 backdrop-blur-sm rounded-2xl p-3 sm:p-4 border-2 border-dashed border-stone-300/50 hover:border-stone-400/60 hover:bg-stone-100/70 transition-all group touch-manipulation"
                   >
-                    <div className="flex items-center justify-center space-x-3">
-                      <svg className="w-5 h-5 text-stone-500 group-hover:text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex items-center justify-center space-x-2 sm:space-x-3">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-stone-500 group-hover:text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
-                      <span className="text-sm font-medium text-stone-600 group-hover:text-stone-700">Add New Event</span>
+                      <span className="text-xs sm:text-sm font-medium text-stone-600 group-hover:text-stone-700">Add New Event</span>
                     </div>
                   </button>
                 </div>
@@ -509,13 +509,13 @@ export default function Home() {
           <div className="px-4 py-6">
             <button
               onClick={addNewDay}
-              className="w-full bg-stone-100/50 backdrop-blur-sm rounded-2xl p-8 border-2 border-dashed border-stone-300/50 hover:border-stone-400/60 hover:bg-stone-100/70 transition-all group"
+              className="w-full bg-stone-100/50 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border-2 border-dashed border-stone-300/50 hover:border-stone-400/60 hover:bg-stone-100/70 transition-all group touch-manipulation"
             >
-              <div className="flex items-center justify-center space-x-3">
-                <svg className="w-6 h-6 text-stone-500 group-hover:text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center justify-center space-x-2 sm:space-x-3">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-stone-500 group-hover:text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                <span className="text-lg font-medium text-stone-600 group-hover:text-stone-700">Add New Day</span>
+                <span className="text-base sm:text-lg font-medium text-stone-600 group-hover:text-stone-700">Add New Day</span>
               </div>
             </button>
           </div>
