@@ -1,7 +1,6 @@
 import type { Route } from "./+types/home";
 import React, { useState, useEffect, useRef } from "react";
-import Picker from '@emoji-mart/react';
-import data from '@emoji-mart/data';
+import EmojiPicker from 'emoji-picker-react';
 import { createPortal } from 'react-dom';
 import { api } from '../services/api';
 
@@ -308,7 +307,7 @@ export default function Home() {
     setIsLoading(true);
     setError("");
     try {
-      const data = await api.getAlbumFull('album-1');
+      const data = await api.getAlbumFull('album-1') as any;
       setAlbumData(data);
       setTripDays(data.days || []);
       setAllParticipants(data.participants || []);
@@ -329,7 +328,7 @@ export default function Home() {
     setError("");
     
     try {
-      const result = await api.login(loginUserId, loginPassword);
+      const result = await api.login(loginUserId, loginPassword) as any;
       if (result.success) {
         setIsAuthenticated(true);
         await loadAlbumData();
@@ -518,16 +517,24 @@ export default function Home() {
       // Show loading state with temporary URLs
       const fileArray = Array.from(files);
       const tempUrls: string[] = [];
-      const tempPhotos: string[] = [];
-      const tempVideos: string[] = [];
+      const tempPhotos: MediaItem[] = [];
+      const tempVideos: MediaItem[] = [];
       
       fileArray.forEach(file => {
         const url = URL.createObjectURL(file);
         tempUrls.push(url);
+        const mediaItem: MediaItem = {
+          url,
+          uploader: {
+            id: 'temp',
+            name: 'Uploading...',
+            avatar: ''
+          }
+        };
         if (file.type.startsWith('video/')) {
-          tempVideos.push(url);
+          tempVideos.push(mediaItem);
         } else {
-          tempPhotos.push(url);
+          tempPhotos.push(mediaItem);
         }
       });
       
@@ -551,7 +558,7 @@ export default function Home() {
       ));
 
       // Upload to backend
-      const result = await api.uploadMedia(eventId, files);
+      const result = await api.uploadMedia(eventId, files) as any;
       
       if (result.success) {
         // Get current user info for uploader avatar
@@ -807,7 +814,7 @@ export default function Home() {
         location: "Add location",
         sortOrder,
         participantIds: allParticipants.map(p => p.id)
-      });
+      }) as any;
       
       const newEvent: TripEvent = {
         id: result.eventId,
@@ -1085,7 +1092,7 @@ export default function Home() {
       const result = await api.createTripDay('album-1', {
         title: 'New Day',
         date: today
-      });
+      }) as any;
       
       if (!result.dayId) {
         throw new Error('No dayId returned from API');
@@ -1207,7 +1214,7 @@ export default function Home() {
         `/api/location/autocomplete?query=${encodeURIComponent(query)}`,
         { method: 'GET' }
       );
-      const result = await response.json();
+      const result = await response.json() as any;
       
       if (result.features) {
         setLocationSuggestions(result.features.slice(0, 5)); // Limit to 5 suggestions
@@ -1462,7 +1469,7 @@ export default function Home() {
                     <div className="flex items-center space-x-3">
                       <div className="relative date-picker-dropdown">
                         <button
-                          ref={(el) => datePickerButtonRefs.current[day.id] = el}
+                          ref={(el) => { datePickerButtonRefs.current[day.id] = el; }}
                           onClick={() => openDatePicker(day.id)}
                           className="text-sm font-medium text-stone-800 bg-stone-forest/20 px-3 py-1 rounded-full border-none outline-none focus:outline-none hover:bg-stone-forest/30 focus:bg-stone-forest/30 cursor-pointer"
                           data-date-picker
@@ -1586,7 +1593,7 @@ export default function Home() {
                               <div className="flex items-start mb-1">
                                 <div className="emoji-picker-container relative">
                                   <button
-                                    ref={(el) => emojiButtonRefs.current[`edit-${event.id}`] = el}
+                                    ref={(el) => { emojiButtonRefs.current[`edit-${event.id}`] = el; }}
                                     onClick={() => openEmojiPicker(`edit-${event.id}`)}
                                     className="w-8 h-8 text-lg bg-transparent border border-stone-300/30 rounded-md mr-2 hover:scale-110 transition-transform cursor-pointer flex items-center justify-center hover:border-stone-400/50"
                                     title="Click to change emoji"
@@ -1685,7 +1692,7 @@ export default function Home() {
                                     }}
                                     className="text-xs text-stone-600 font-medium bg-transparent border-none outline-none w-full hover:bg-white/10 focus:bg-white/10 rounded px-1 py-0.5 -mx-1 -my-0.5"
                                     placeholder="Add location..."
-                                    ref={(el) => setLocationInputRef(el)}
+                                    ref={setLocationInputRef}
                                   />
                                 </div>
                               </div>
@@ -1715,7 +1722,7 @@ export default function Home() {
                                     ))}
                                     {allParticipants.filter(p => !event.participants.some(ep => ep.id === p.id)).length > 0 && (
                                       <button
-                                        ref={(el) => addParticipantButtonRefs.current[`edit-${event.id}`] = el}
+                                        ref={(el) => { addParticipantButtonRefs.current[`edit-${event.id}`] = el; }}
                                         onClick={() => openAddParticipantDropdown(`edit-${event.id}`)}
                                         className="w-7 h-7 bg-stone-200/80 hover:bg-stone-300/80 border border-stone-300/60 rounded-full flex items-center justify-center text-stone-600 hover:text-stone-700 transition-colors text-xs font-bold ml-1"
                                         title="Add participant"
@@ -1766,7 +1773,7 @@ export default function Home() {
                               <h4 className="text-lg font-display font-medium text-stone-900 mb-1 relative">
                                 <div className="emoji-picker-container relative inline-block">
                                   <button
-                                    ref={(el) => emojiButtonRefs.current[event.id] = el}
+                                    ref={(el) => { emojiButtonRefs.current[event.id] = el; }}
                                     onClick={() => openEmojiPicker(event.id)}
                                     className="mr-2 hover:scale-110 transition-transform cursor-pointer"
                                     title="Click to change emoji"
@@ -2026,18 +2033,19 @@ export default function Home() {
             zIndex: 9999
           }}
         >
-          <Picker
-            data={data}
-            onEmojiSelect={(emoji: any) => {
+          <EmojiPicker
+            onEmojiClick={(emoji: any) => {
               if (showEmojiPicker.startsWith('edit-')) {
                 handleEmojiSelect(emoji);
               } else {
                 handleEmojiSelectDirect(emoji, showEmojiPicker);
               }
             }}
-            theme="light"
-            previewPosition="none"
-            skinTonePosition="none"
+            theme={"light" as any}
+            previewConfig={{
+              showPreview: false
+            }}
+            skinTonesDisabled
           />
         </div>,
         document.body
