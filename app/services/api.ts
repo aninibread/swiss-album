@@ -175,14 +175,12 @@ class ApiService {
 
     async createTripDay(albumId: string, dayData: { title: string; date: string }) {
         const credentials = this.getCredentials();
-        console.log('API Service - Credentials:', credentials);
         
         const payload = {
             ...credentials,
             albumId,
             ...dayData
         };
-        console.log('API Service - Payload:', payload);
         
         const response = await fetch('/api/trip-days', {
             method: 'POST',
@@ -191,19 +189,14 @@ class ApiService {
             },
             body: JSON.stringify(payload),
         });
-
-        console.log('API Service - Response status:', response.status);
-        console.log('API Service - Response ok:', response.ok);
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('API Service - Error response:', errorText);
+            console.error('Failed to create trip day:', response.statusText, errorText);
             throw new Error(`Failed to create trip day: ${response.statusText} - ${errorText}`);
         }
 
-        const result = await response.json();
-        console.log('API Service - Success result:', result);
-        return result;
+        return await response.json();
     }
 
     async deleteTripDay(dayId: string) {
@@ -246,16 +239,12 @@ class ApiService {
 
     async uploadMedia(eventId: string, files: FileList) {
         const credentials = this.getCredentials();
-        console.log('Upload media - credentials:', credentials);
-        console.log('Upload media - eventId:', eventId, 'files:', files.length);
         
         // Import video converter
         const { convertFiles } = await import('../utils/videoConverter');
         
         // Convert .mov files to .mp4 before uploading
-        const convertedFiles = await convertFiles(files, (fileIndex, progress) => {
-            console.log(`Converting file ${fileIndex + 1}/${files.length}:`, progress);
-        });
+        const convertedFiles = await convertFiles(files);
         
         const formData = new FormData();
         
@@ -265,7 +254,6 @@ class ApiService {
         
         for (let i = 0; i < convertedFiles.length; i++) {
             formData.append('files', convertedFiles[i]);
-            console.log('Adding file to FormData:', convertedFiles[i].name, convertedFiles[i].type);
         }
         
         try {
@@ -274,19 +262,15 @@ class ApiService {
                 body: formData
             });
 
-            console.log('Upload response status:', response.status, response.statusText);
-
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('Upload error response:', errorText);
+                console.error('Failed to upload media:', response.statusText, errorText);
                 throw new Error(`Failed to upload media: ${response.statusText} - ${errorText}`);
             }
 
-            const result = await response.json();
-            console.log('Upload success result:', result);
-            return result;
+            return await response.json();
         } catch (error) {
-            console.error('Upload error:', error);
+            console.error('Media upload failed:', error);
             throw error;
         }
     }

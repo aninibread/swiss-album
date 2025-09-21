@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { api } from '../services/api';
 import type { Participant, TripDay, TripEvent } from '../types';
 import { LoginForm, AppLayout, SideNavigation, MainContent, AlbumHeader, TripHighlights, JourneyMap, ParticipantsList, DaySection, EventCard, EmojiPickerPortal, ParticipantDropdownPortal, DatePickerPortal, MediaModal } from '../components';
-import { useAuth, useScrollTracking, useAlbumData, useEventEdit, useDayEdit, useMediaUpload, useDragAndDrop } from '../hooks';
+import { useAuth, useScrollTracking, useAlbumData, useEventEdit, useDayEdit, useMediaUpload, useEventReorder } from '../hooks';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -66,8 +66,8 @@ export default function Home() {
     cancelDayEdit, addNewDay, deleteDay, setEditDayTitle, setEditDayDate
   } = dayEditHook;
   
-  // Drag and drop functionality
-  const { draggedEvent, handleDragStart, handleDragOver, handleDragLeave, handleDrop } = useDragAndDrop({ tripDays, setTripDays });
+  // Event reordering functionality
+  const { draggedEvent, moveEventUp, moveEventDown, canMoveEventUp, canMoveEventDown } = useEventReorder({ tripDays, setTripDays });
   
   // Global edit mode state
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
@@ -487,10 +487,10 @@ export default function Home() {
                     editLocation={editLocation}
                     savingEvent={savingEvent}
                     allParticipants={allParticipants}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
+                    onMoveEventUp={moveEventUp}
+                    onMoveEventDown={moveEventDown}
+                    canMoveUp={canMoveEventUp(day.id, event.id)}
+                    canMoveDown={canMoveEventDown(day.id, event.id)}
                     onStartEdit={startEditingEvent}
                     onSaveEdit={saveEventEdit}
                     onCancelEdit={cancelEventEdit}

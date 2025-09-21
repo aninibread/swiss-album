@@ -283,16 +283,12 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                 });
             }
 
-            console.log('Updating event:', eventId, 'with data:', { name, description, emoji, location });
-            
             try {
-                const result = await env.DB.prepare(`
+                await env.DB.prepare(`
                     UPDATE events 
                     SET name = ?, description = ?, emoji = ?, location = ?
                     WHERE id = ?
                 `).bind(name, description, emoji, location, eventId).run();
-                
-                console.log('Update result:', result);
                 
                 return new Response(JSON.stringify({ success: true }), {
                     headers: corsHeaders
@@ -319,16 +315,13 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
             }
 
             const eventId = `event-${Date.now()}`;
-            console.log('Creating new event:', eventId, 'for tripDayId:', tripDayId, 'with participants:', participantIds);
             
             try {
                 // Create the event
-                const result = await env.DB.prepare(`
+                await env.DB.prepare(`
                     INSERT INTO events (id, trip_day_id, name, description, emoji, location, sort_order)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 `).bind(eventId, tripDayId, name, description, emoji, location, sortOrder).run();
-                
-                console.log('Event creation result:', result);
                 
                 // Add participants if provided
                 if (participantIds && Array.isArray(participantIds)) {
@@ -338,7 +331,6 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                             VALUES (?, ?)
                         `).bind(eventId, participantId).run();
                     }
-                    console.log('Added participants:', participantIds);
                 }
                 
                 return new Response(JSON.stringify({ success: true, eventId }), {
@@ -562,7 +554,6 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                 const uploadedFiles = [];
 
                 for (const file of files) {
-                    console.log('Processing file:', file.name, file.type, file.size);
                     
                     // Get album_id for the event
                     const eventInfo = await env.DB.prepare(`
@@ -595,7 +586,6 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                     
                     // Try to upload to R2 first
                     try {
-                        console.log('Uploading to R2 bucket:', fileName, 'size:', file.size, 'type:', file.type);
                         
                         // Convert File to ArrayBuffer for R2
                         const arrayBuffer = await file.arrayBuffer();
@@ -620,7 +610,6 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                         });
                         
                         if (r2Object) {
-                            console.log('File uploaded to R2 successfully:', fileName, 'etag:', r2Object.etag);
                             uploadSuccess = true;
                             
                             // Save media info to database with R2 key for direct access
@@ -642,20 +631,16 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                                 new Date().toISOString()
                             ).run();
                             
-                            console.log('Media saved to database:', mediaId);
                             fileUrl = `/api/media/${mediaId}`;
                         } else {
-                            console.log('R2 upload returned null (precondition failed?)');
                             uploadSuccess = false;
                             // Fallback to base64 for display if upload failed
-                            console.log('Converting to base64 for display:', fileName);
                             fileUrl = `data:${file.type};base64,${await fileToBase64(file)}`;
                         }
                     } catch (r2Error) {
                         console.error('R2 upload failed:', r2Error);
                         uploadSuccess = false;
                         // Fallback to base64 for display if upload failed
-                        console.log('Converting to base64 for display:', fileName);
                         fileUrl = `data:${file.type};base64,${await fileToBase64(file)}`;
                     }
                     
@@ -854,7 +839,6 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                 
                 if (matchingObject) {
                     await env.BUCKET.delete(matchingObject.key);
-                    console.log('Deleted from R2:', matchingObject.key);
                 }
                 
                 // Delete from database
