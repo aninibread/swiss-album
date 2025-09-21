@@ -17,6 +17,9 @@ export interface ConversionResult {
  * Check if WebCodecs API is supported in the browser
  */
 export function isWebCodecsSupported(): boolean {
+  // Safety check for global scope in Cloudflare Workers
+  if (typeof window === 'undefined') return false;
+  
   return typeof VideoEncoder !== 'undefined' && 
          typeof VideoDecoder !== 'undefined' &&
          typeof AudioEncoder !== 'undefined' &&
