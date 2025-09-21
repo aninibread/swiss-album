@@ -3,6 +3,7 @@ import type { TripDay, Participant } from '../../types';
 
 interface DayHeaderProps {
   day: TripDay;
+  isEditMode: boolean;
   editingDay: string;
   editDayTitle: string;
   editDayDate: string;
@@ -19,6 +20,7 @@ interface DayHeaderProps {
 
 export function DayHeader({
   day,
+  isEditMode,
   editingDay,
   editDayTitle,
   editDayDate,
@@ -82,28 +84,30 @@ export function DayHeader({
             <h2 className="text-lg sm:text-2xl font-display font-bold text-stone-900 tracking-tight">{day.title}</h2>
             <div className="flex items-center space-x-2 sm:space-x-3">
               <span className="text-xs sm:text-sm font-medium text-stone-800 bg-stone-forest/20 px-2 sm:px-3 py-1 rounded-full">{day.date}</span>
-              <div className="flex items-center space-x-1">
-                {day.events.length === 0 && (
+              {isEditMode && (
+                <div className="flex items-center space-x-1">
+                  {day.events.length === 0 && (
+                    <button
+                      onClick={() => onDeleteDay(day.id)}
+                      className="p-1.5 sm:p-1 rounded-lg hover:bg-red-200/50 transition-colors touch-manipulation"
+                      title="Delete day (only available when no events)"
+                    >
+                      <svg className="w-5 h-5 sm:w-4 sm:h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
                   <button
-                    onClick={() => onDeleteDay(day.id)}
-                    className="p-1.5 sm:p-1 rounded-lg hover:bg-red-200/50 transition-colors touch-manipulation"
-                    title="Delete day (only available when no events)"
+                    onClick={() => onStartEdit(day.id, day.title, day.date)}
+                    className="p-1 rounded-lg hover:bg-stone-200/50 transition-colors touch-manipulation"
+                    title="Edit day"
                   >
-                    <svg className="w-5 h-5 sm:w-4 sm:h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    <svg className="w-4 h-4 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
                   </button>
-                )}
-                <button
-                  onClick={() => onStartEdit(day.id, day.title, day.date)}
-                  className="p-1 rounded-lg hover:bg-stone-200/50 transition-colors touch-manipulation"
-                  title="Edit day"
-                >
-                  <svg className="w-4 h-4 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                </button>
-              </div>
+                </div>
+              )}
             </div>
           </>
         )}

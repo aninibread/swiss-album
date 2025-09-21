@@ -4,6 +4,7 @@ import type { TripDay, Participant } from '../../types';
 
 interface DaySectionProps {
   day: TripDay;
+  isEditMode: boolean;
   editingDay: string;
   editDayTitle: string;
   editDayDate: string;
@@ -21,6 +22,7 @@ interface DaySectionProps {
 
 export function DaySection({
   day,
+  isEditMode,
   editingDay,
   editDayTitle,
   editDayDate,
@@ -39,6 +41,7 @@ export function DaySection({
     <div key={day.id} id={`day-${day.id}`} className="mb-8 sm:mb-12">
       <DayHeader
         day={day}
+        isEditMode={isEditMode}
         editingDay={editingDay}
         editDayTitle={editDayTitle}
         editDayDate={editDayDate}

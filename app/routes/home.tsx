@@ -69,6 +69,9 @@ export default function Home() {
   // Drag and drop functionality
   const { draggedEvent, handleDragStart, handleDragOver, handleDragLeave, handleDrop } = useDragAndDrop({ tripDays, setTripDays });
   
+  // Global edit mode state
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  
   // UI state that's not handled by data hooks
   const [showEmojiPicker, setShowEmojiPicker] = useState<string>("");
   const [emojiPickerPosition, setEmojiPickerPosition] = useState<{top: number, left: number} | null>(null);
@@ -171,6 +174,19 @@ export default function Home() {
     setHookError("");
   };
 
+  // Edit mode toggle
+  const toggleEditMode = () => {
+    setIsEditMode(!isEditMode);
+    // Exit any current editing when toggling edit mode
+    if (isEditMode) {
+      cancelEventEdit();
+      cancelDayEdit();
+      closeEmojiPicker();
+      closeParticipantDropdown();
+      closeDatePicker();
+    }
+  };
+
   // Show login form if not authenticated
   if (!isAuthenticated) {
     return <LoginForm onLogin={handleLogin} isLoading={authLoading} error={authError} />;
@@ -259,6 +275,8 @@ export default function Home() {
   };
 
   const openEmojiPicker = (eventId: string) => {
+    if (!isEditMode) return; // Only allow in edit mode
+    
     if (showEmojiPicker === eventId) {
       setShowEmojiPicker("");
       setEmojiPickerPosition(null);
@@ -283,6 +301,8 @@ export default function Home() {
 
   // Participant dropdown handlers
   const openAddParticipantDropdown = (eventId: string) => {
+    if (!isEditMode) return; // Only allow in edit mode
+    
     if (showAddParticipant === eventId) {
       setShowAddParticipant("");
       setAddParticipantPosition(null);
@@ -315,6 +335,8 @@ export default function Home() {
 
   // Date picker handlers
   const openDatePicker = (dayId: string) => {
+    if (!isEditMode) return; // Only allow in edit mode
+    
     if (showDatePicker === dayId) {
       setShowDatePicker("");
       setDatePickerPosition(null);
@@ -410,6 +432,8 @@ export default function Home() {
         <AlbumHeader
           title="Swiss Adventure"
           subtitle="July 2024 · 136 photos"
+          isEditMode={isEditMode}
+          onEditModeToggle={toggleEditMode}
           onLogout={handleLogout}
         >
           <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
@@ -433,6 +457,7 @@ export default function Home() {
             <DaySection
               key={day.id}
               day={day}
+              isEditMode={isEditMode}
               editingDay={editingDay}
               editDayTitle={editDayTitle}
               editDayDate={editDayDate}
@@ -452,6 +477,7 @@ export default function Home() {
                     key={event.id}
                     event={event}
                     dayId={day.id}
+                    isEditMode={isEditMode}
                     isEditing={editingEvent === event.id}
                     isDragging={draggedEvent?.eventId === event.id}
                     currentUserId={api.getCredentials().userId || undefined}
@@ -486,67 +512,76 @@ export default function Home() {
                   />
                 ))}
                 
-                {/* Add New Event Button */}
-                <div className="relative ml-8 sm:ml-16">
-                  <div className="absolute left-2 sm:left-4 top-2 w-3 h-3 sm:w-4 sm:h-4 bg-stone-forest rounded-full border-2 sm:border-4 border-white shadow-md z-10 -ml-8 sm:-ml-16"></div>
-                  <button
-                    onClick={() => addNewEvent(day.id)}
-                    className="w-full bg-stone-100/50 backdrop-blur-sm rounded-2xl p-3 sm:p-4 border-2 border-dashed border-stone-300/50 hover:border-stone-400/60 hover:bg-stone-100/70 transition-all group touch-manipulation"
-                  >
-                    <div className="flex items-center justify-center space-x-2 sm:space-x-3">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-stone-500 group-hover:text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      <span className="text-xs sm:text-sm font-medium text-stone-600 group-hover:text-stone-700">Add New Event</span>
-                    </div>
-                  </button>
-                </div>
+                {/* Add New Event Button - only show in edit mode */}
+                {isEditMode && (
+                  <div className="relative ml-8 sm:ml-16">
+                    <div className="absolute left-2 sm:left-4 top-2 w-3 h-3 sm:w-4 sm:h-4 bg-stone-forest rounded-full border-2 sm:border-4 border-white shadow-md z-10 -ml-8 sm:-ml-16"></div>
+                    <button
+                      onClick={() => addNewEvent(day.id)}
+                      className="w-full bg-stone-100/50 backdrop-blur-sm rounded-2xl p-3 sm:p-4 border-2 border-dashed border-stone-300/50 hover:border-stone-400/60 hover:bg-stone-100/70 transition-all group touch-manipulation"
+                    >
+                      <div className="flex items-center justify-center space-x-2 sm:space-x-3">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-stone-500 group-hover:text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span className="text-xs sm:text-sm font-medium text-stone-600 group-hover:text-stone-700">Add New Event</span>
+                      </div>
+                    </button>
+                  </div>
+                )}
               </>
             </DaySection>
           ))}
           
-          {/* Add New Day Button */}
-          <div className="px-4 py-6">
-            <button
-              onClick={addNewDay}
-              className="w-full bg-stone-100/50 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border-2 border-dashed border-stone-300/50 hover:border-stone-400/60 hover:bg-stone-100/70 transition-all group touch-manipulation"
-            >
-              <div className="flex items-center justify-center space-x-2 sm:space-x-3">
-                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-stone-500 group-hover:text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="text-base sm:text-lg font-medium text-stone-600 group-hover:text-stone-700">Add New Day</span>
-              </div>
-            </button>
-          </div>
+          {/* Add New Day Button - only show in edit mode */}
+          {isEditMode && (
+            <div className="px-4 py-6">
+              <button
+                onClick={addNewDay}
+                className="w-full bg-stone-100/50 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border-2 border-dashed border-stone-300/50 hover:border-stone-400/60 hover:bg-stone-100/70 transition-all group touch-manipulation"
+              >
+                <div className="flex items-center justify-center space-x-2 sm:space-x-3">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-stone-500 group-hover:text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span className="text-base sm:text-lg font-medium text-stone-600 group-hover:text-stone-700">Add New Day</span>
+                </div>
+              </button>
+            </div>
+          )}
         </div>
         </MainContent>
       </AppLayout>
       
-      {/* Emoji Picker Portal */}
-      <EmojiPickerPortal
-        isOpen={!!showEmojiPicker}
-        position={emojiPickerPosition}
-        onEmojiSelect={handleEmojiSelect}
-        onClose={closeEmojiPicker}
-      />
-      
-      {/* Participant Dropdown Portal */}
-      <ParticipantDropdownPortal
-        isOpen={!!showAddParticipant}
-        position={addParticipantPosition}
-        availableParticipants={availableParticipants}
-        onParticipantSelect={handleParticipantSelect}
-        onClose={closeParticipantDropdown}
-      />
-      
-      {/* Date Picker Portal */}
-      <DatePickerPortal
-        isOpen={!!showDatePicker}
-        position={datePickerPosition}
-        onDateSelect={handleDateSelect}
-        onClose={closeDatePicker}
-      />
+      {/* Edit Mode Portals - only render when in edit mode */}
+      {isEditMode && (
+        <>
+          {/* Emoji Picker Portal */}
+          <EmojiPickerPortal
+            isOpen={!!showEmojiPicker}
+            position={emojiPickerPosition}
+            onEmojiSelect={handleEmojiSelect}
+            onClose={closeEmojiPicker}
+          />
+          
+          {/* Participant Dropdown Portal */}
+          <ParticipantDropdownPortal
+            isOpen={!!showAddParticipant}
+            position={addParticipantPosition}
+            availableParticipants={availableParticipants}
+            onParticipantSelect={handleParticipantSelect}
+            onClose={closeParticipantDropdown}
+          />
+          
+          {/* Date Picker Portal */}
+          <DatePickerPortal
+            isOpen={!!showDatePicker}
+            position={datePickerPosition}
+            onDateSelect={handleDateSelect}
+            onClose={closeDatePicker}
+          />
+        </>
+      )}
       
       
 

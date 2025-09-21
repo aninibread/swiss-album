@@ -5,6 +5,7 @@ import type { TripEvent, Participant } from '../../types';
 interface EventCardProps {
   event: TripEvent;
   dayId: string;
+  isEditMode: boolean;
   isEditing: boolean;
   isDragging: boolean;
   currentUserId?: string;
@@ -45,6 +46,7 @@ interface EventCardProps {
 export function EventCard({
   event,
   dayId,
+  isEditMode,
   isEditing,
   isDragging,
   currentUserId,
@@ -83,11 +85,11 @@ export function EventCard({
     <div 
       id={`event-${event.id}`} 
       className="relative"
-      draggable={!isEditing}
-      onDragStart={(e) => onDragStart(e, dayId, event.id)}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={(e) => onDrop(e, dayId, event.id)}
+      draggable={isEditMode && !isEditing}
+      onDragStart={isEditMode ? (e) => onDragStart(e, dayId, event.id) : undefined}
+      onDragOver={isEditMode ? onDragOver : undefined}
+      onDragLeave={isEditMode ? onDragLeave : undefined}
+      onDrop={isEditMode ? (e) => onDrop(e, dayId, event.id) : undefined}
     >
       {/* Timeline Node */}
       <div className="absolute left-2 sm:left-4 top-2 w-3 h-3 sm:w-4 sm:h-4 bg-stone-forest rounded-full border-2 sm:border-4 border-white shadow-md z-10"></div>
@@ -96,7 +98,7 @@ export function EventCard({
       <div className="ml-8 sm:ml-16">
         <div className={`bg-stone-200/20 backdrop-blur-sm rounded-2xl p-3 sm:p-6 border border-stone-300/25 shadow-lg mb-4 transition-all ${
           isDragging ? 'opacity-50 transform scale-95' : 'opacity-100'
-        } ${!isEditing ? 'cursor-grab active:cursor-grabbing hover:shadow-xl' : ''}`}>
+        } ${isEditMode && !isEditing ? 'cursor-grab active:cursor-grabbing hover:shadow-xl' : ''}`}>
           <div className="relative">
             {isEditing ? (
               <>
@@ -211,17 +213,19 @@ export function EventCard({
                             title={participant.name}
                           />
                         </div>
-                        <button
-                          onClick={() => onRemoveParticipant(dayId, event.id, participant.id)}
-                          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold transition-colors"
-                          title="Remove participant"
-                        >
-                          ×
-                        </button>
+                        {isEditMode && (
+                          <button
+                            onClick={() => onRemoveParticipant(dayId, event.id, participant.id)}
+                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold transition-colors"
+                            title="Remove participant"
+                          >
+                            ×
+                          </button>
+                        )}
                       </div>
                     ))}
-                    {/* Only show add button if there are participants available to add */}
-                    {allParticipants.some(p => !event.participants.some(ep => ep.id === p.id)) && (
+                    {/* Only show add button if there are participants available to add and in edit mode */}
+                    {isEditMode && allParticipants.some(p => !event.participants.some(ep => ep.id === p.id)) && (
                       <button
                         ref={(el) => { addParticipantButtonRefs.current[event.id] = el; }}
                         onClick={() => onOpenAddParticipant(event.id)}
@@ -237,28 +241,30 @@ export function EventCard({
             ) : (
               <>
                 {/* View Mode */}
-                <div className="absolute top-0 right-0 flex items-center space-x-1">
-                  <button
-                    onClick={() => onStartEdit(event.id, event.name, event.description, event.emoji, event.location)}
-                    className="p-1 rounded-lg hover:bg-stone-200/50 transition-colors"
-                    title="Edit event"
-                  >
-                    <svg className="w-4 h-4 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </button>
-                  {(!event.photos || event.photos.length === 0) && (!event.videos || event.videos.length === 0) && (
+                {isEditMode && (
+                  <div className="absolute top-0 right-0 flex items-center space-x-1">
                     <button
-                      onClick={() => onDeleteEvent(dayId, event.id)}
-                      className="p-1 rounded-lg hover:bg-red-200/50 transition-colors"
-                      title="Delete event"
+                      onClick={() => onStartEdit(event.id, event.name, event.description, event.emoji, event.location)}
+                      className="p-1 rounded-lg hover:bg-stone-200/50 transition-colors"
+                      title="Edit event"
                     >
-                      <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <svg className="w-4 h-4 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                       </svg>
                     </button>
-                  )}
-                </div>
+                    {(!event.photos || event.photos.length === 0) && (!event.videos || event.videos.length === 0) && (
+                      <button
+                        onClick={() => onDeleteEvent(dayId, event.id)}
+                        className="p-1 rounded-lg hover:bg-red-200/50 transition-colors"
+                        title="Delete event"
+                      >
+                        <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex items-start mb-2">
                   <span className="text-lg mr-2 select-none">{event.emoji}</span>
@@ -314,6 +320,7 @@ export function EventCard({
           videos={event.videos}
           eventId={event.id}
           dayId={dayId}
+          isEditMode={isEditMode}
           isEditing={isEditing}
           currentUserId={currentUserId}
           onImageClick={onImageClick}

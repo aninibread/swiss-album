@@ -7,6 +7,7 @@ interface MediaGalleryProps {
   videos: MediaItem[];
   eventId: string;
   dayId: string;
+  isEditMode: boolean;
   isEditing: boolean;
   currentUserId?: string;
   onImageClick: (url: string) => void;
@@ -20,6 +21,7 @@ export function MediaGallery({
   videos,
   eventId,
   dayId,
+  isEditMode,
   isEditing,
   currentUserId,
   onImageClick,
@@ -44,7 +46,7 @@ export function MediaGallery({
   };
 
   const canDeleteMedia = (media: MediaItem) => {
-    return isEditing && 
+    return isEditMode && isEditing && 
            typeof media === 'object' && 
            media.uploader && 
            currentUserId === media.uploader.id;
@@ -134,7 +136,7 @@ export function MediaGallery({
       })}
       
         {/* Add button - only show in edit mode */}
-        {isEditing && onAddPhotos && (
+        {isEditMode && isEditing && onAddPhotos && (
           <div className="break-inside-avoid mb-3">
             <label className="block">
               <div className="bg-stone-100/20 backdrop-blur-sm border-2 border-dashed border-stone-300/30 hover:border-stone-400/50 rounded-2xl p-4 text-center cursor-pointer transition-all hover:bg-stone-100/30 group">
