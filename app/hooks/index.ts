@@ -6,6 +6,8 @@ export { useAlbumData } from './useAlbumData';
 export { useEventEdit } from './useEventEdit';
 export { useDayEdit } from './useDayEdit';
 export { useMediaUpload } from './useMediaUpload';
+export { useMediaComments } from './useMediaComments';
+export { useCommentsManager } from './useCommentsManager';
 
 // Utility Hooks
 export { useClickOutside } from './useClickOutside';

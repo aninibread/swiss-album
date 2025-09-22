@@ -2,8 +2,8 @@ import type { Route } from "./+types/home";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { api } from '../services/api';
 import type { Participant, TripDay, TripEvent } from '../types';
-import { LoginForm, AppLayout, SideNavigation, MainContent, AlbumHeader, TripHighlights, JourneyMap, ParticipantsList, DaySection, EventCard, EmojiPickerPortal, ParticipantDropdownPortal, DatePickerPortal, MediaModal } from '../components';
-import { useAuth, useScrollTracking, useAlbumData, useEventEdit, useDayEdit, useMediaUpload, useEventReorder } from '../hooks';
+import { LoginForm, AppLayout, SideNavigation, MainContent, AlbumHeader, TripHighlights, JourneyMap, ParticipantsList, DaySection, EventCard, EmojiPickerPortal, ParticipantDropdownPortal, DatePickerPortal, MediaModal, MediaCommentsPanel } from '../components';
+import { useAuth, useScrollTracking, useAlbumData, useEventEdit, useDayEdit, useMediaUpload, useEventReorder, useCommentsManager } from '../hooks';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -68,6 +68,11 @@ export default function Home() {
   
   // Event reordering functionality
   const { draggedEvent, moveEventUp, moveEventDown, canMoveEventUp, canMoveEventDown } = useEventReorder({ tripDays, setTripDays });
+  
+  // Comments management
+  const commentsManager = useCommentsManager({ 
+    currentUserId: api.getCredentials().userId || undefined
+  });
   
   // Global edit mode state
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
@@ -509,6 +514,7 @@ export default function Home() {
                     onOpenAddParticipant={openAddParticipantDropdown}
                     emojiButtonRefs={emojiButtonRefs}
                     addParticipantButtonRefs={addParticipantButtonRefs}
+                    commentsManager={commentsManager}
                   />
                 ))}
                 

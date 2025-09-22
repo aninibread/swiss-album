@@ -10,6 +10,20 @@ export interface TripDay {
   backgroundColor: string;
 }
 
+export interface MediaComment {
+  id: string;
+  mediaId: string;
+  userId: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  author: {
+    id: string;
+    name: string;
+    avatar: string;
+  };
+}
+
 export interface MediaItem {
   url: string;
   uploader: {
@@ -17,6 +31,7 @@ export interface MediaItem {
     name: string;
     avatar: string;
   };
+  comments?: MediaComment[];
 }
 
 export interface TripEvent {

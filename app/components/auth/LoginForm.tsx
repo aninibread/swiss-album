@@ -32,7 +32,7 @@ export function LoginForm({ onLogin, isLoading, error }: LoginFormProps) {
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6" suppressHydrationWarning>
-          <div>
+          <div suppressHydrationWarning>
             <label className="block text-sm font-medium text-stone-700 mb-3 font-display">User ID</label>
             <input
               type="text"
@@ -45,7 +45,7 @@ export function LoginForm({ onLogin, isLoading, error }: LoginFormProps) {
             />
           </div>
           
-          <div>
+          <div suppressHydrationWarning>
             <label className="block text-sm font-medium text-stone-700 mb-3 font-display">Password</label>
             <input
               type="password"

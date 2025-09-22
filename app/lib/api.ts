@@ -209,10 +209,17 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                         const videos: any[] = [];
                         
                         eventMedia.forEach((m: any) => {
-                            // Use the media_url directly from database
+                            // Ensure we use the correct API URL format for media
                             if (m.media_url) {
+                                // If the stored URL is already in API format, use it
+                                // Otherwise, construct the API URL using the media ID
+                                let mediaUrl = m.media_url;
+                                if (!mediaUrl.startsWith('/api/media/')) {
+                                    mediaUrl = `/api/media/${m.id}`;
+                                }
+                                
                                 const mediaItem = {
-                                    url: m.media_url,
+                                    url: mediaUrl,
                                     uploader: {
                                         id: m.uploader_id,
                                         name: m.uploader_id,
@@ -888,6 +895,290 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
             } catch (error) {
                 console.error('Location API error:', error);
                 return new Response(JSON.stringify({ features: [] }), {
+                    headers: corsHeaders
+                });
+            }
+        }
+        
+        // Get comments for media
+        if (url.pathname.match(/\/api\/media\/([^\/]+)\/comments$/) && request.method === 'GET') {
+            const mediaId = url.pathname.split('/')[3];
+            const userId = url.searchParams.get('userId');
+            const password = url.searchParams.get('password');
+            
+            if (!userId || !password) {
+                return new Response(JSON.stringify({ error: 'Authentication required' }), { 
+                    status: 401, 
+                    headers: corsHeaders
+                });
+            }
+            
+            const user = await authenticate(userId, password, env);
+            
+            if (!user) {
+                return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+                    status: 401, 
+                    headers: corsHeaders
+                });
+            }
+
+            try {
+                // Verify media exists and user has access
+                const mediaInfo = await env.DB.prepare(`
+                    SELECT em.id
+                    FROM event_media em
+                    JOIN events e ON em.event_id = e.id
+                    JOIN trip_days td ON e.trip_day_id = td.id
+                    JOIN album_participants ap ON td.album_id = ap.album_id
+                    WHERE em.id = ? AND ap.user_id = ?
+                `).bind(mediaId, user.userId).first();
+
+                if (!mediaInfo) {
+                    return new Response(JSON.stringify({ error: 'Media not found or access denied' }), { 
+                        status: 404, 
+                        headers: corsHeaders
+                    });
+                }
+
+                // Get comments for the media
+                const comments = await env.DB.prepare(`
+                    SELECT mc.*, mc.user_id as author_id
+                    FROM media_comments mc
+                    WHERE mc.media_id = ?
+                    ORDER BY mc.created_at ASC
+                `).bind(mediaId).all();
+
+                // Format comments with author info
+                const formattedComments = comments.results?.map((comment: any) => ({
+                    id: comment.id,
+                    mediaId: comment.media_id,
+                    userId: comment.user_id,
+                    content: comment.comment,
+                    createdAt: comment.created_at,
+                    updatedAt: comment.updated_at,
+                    author: {
+                        id: comment.author_id,
+                        name: comment.author_id,
+                        avatar: `https://picsum.photos/80/80?random=${comment.author_id.length}`
+                    }
+                })) || [];
+
+                return new Response(JSON.stringify(formattedComments), {
+                    headers: corsHeaders
+                });
+            } catch (error) {
+                console.error('Error fetching comments:', error);
+                return new Response(JSON.stringify({ error: 'Failed to fetch comments' }), { 
+                    status: 500, 
+                    headers: corsHeaders
+                });
+            }
+        }
+        
+        // Add comment to media
+        if (url.pathname.match(/\/api\/media\/([^\/]+)\/comments$/) && request.method === 'POST') {
+            const mediaId = url.pathname.split('/')[3];
+            const { userId, password, content } = await request.json() as { userId: string; password: string; content: string };
+            const user = await authenticate(userId, password, env);
+            
+            if (!user) {
+                return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+                    status: 401, 
+                    headers: corsHeaders
+                });
+            }
+
+            // Validate content
+            if (!content || content.trim().length === 0) {
+                return new Response(JSON.stringify({ error: 'Comment content is required' }), { 
+                    status: 400, 
+                    headers: corsHeaders
+                });
+            }
+
+            if (content.length > 1000) {
+                return new Response(JSON.stringify({ error: 'Comment content too long (max 1000 characters)' }), { 
+                    status: 400, 
+                    headers: corsHeaders
+                });
+            }
+
+            try {
+                // Verify media exists and user has access
+                const mediaInfo = await env.DB.prepare(`
+                    SELECT em.id
+                    FROM event_media em
+                    JOIN events e ON em.event_id = e.id
+                    JOIN trip_days td ON e.trip_day_id = td.id
+                    JOIN album_participants ap ON td.album_id = ap.album_id
+                    WHERE em.id = ? AND ap.user_id = ?
+                `).bind(mediaId, user.userId).first();
+
+                if (!mediaInfo) {
+                    return new Response(JSON.stringify({ error: 'Media not found or access denied' }), { 
+                        status: 404, 
+                        headers: corsHeaders
+                    });
+                }
+
+                const commentId = `comment-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+                const now = new Date().toISOString();
+
+                // Create the comment
+                await env.DB.prepare(`
+                    INSERT INTO media_comments (id, media_id, user_id, comment, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `).bind(commentId, mediaId, user.userId, content.trim(), now, now).run();
+
+                // Return the created comment with author info
+                const newComment = {
+                    id: commentId,
+                    mediaId: mediaId,
+                    userId: user.userId,
+                    content: content.trim(),
+                    createdAt: now,
+                    updatedAt: now,
+                    author: {
+                        id: user.userId,
+                        name: user.userId,
+                        avatar: `https://picsum.photos/80/80?random=${user.userId.length}`
+                    }
+                };
+
+                return new Response(JSON.stringify(newComment), {
+                    status: 201,
+                    headers: corsHeaders
+                });
+            } catch (error) {
+                console.error('Error creating comment:', error);
+                return new Response(JSON.stringify({ error: 'Failed to create comment' }), { 
+                    status: 500, 
+                    headers: corsHeaders
+                });
+            }
+        }
+        
+        // Update comment
+        if (url.pathname.match(/\/api\/comments\/([^\/]+)$/) && request.method === 'PUT') {
+            const commentId = url.pathname.split('/')[3];
+            const { userId, password, content } = await request.json() as { userId: string; password: string; content: string };
+            const user = await authenticate(userId, password, env);
+            
+            if (!user) {
+                return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+                    status: 401, 
+                    headers: corsHeaders
+                });
+            }
+
+            // Validate content
+            if (!content || content.trim().length === 0) {
+                return new Response(JSON.stringify({ error: 'Comment content is required' }), { 
+                    status: 400, 
+                    headers: corsHeaders
+                });
+            }
+
+            if (content.length > 1000) {
+                return new Response(JSON.stringify({ error: 'Comment content too long (max 1000 characters)' }), { 
+                    status: 400, 
+                    headers: corsHeaders
+                });
+            }
+
+            try {
+                // Check if comment exists and user owns it
+                const comment = await env.DB.prepare(`
+                    SELECT mc.*, em.id as media_id
+                    FROM media_comments mc
+                    JOIN event_media em ON mc.media_id = em.id
+                    JOIN events e ON em.event_id = e.id
+                    JOIN trip_days td ON e.trip_day_id = td.id
+                    JOIN album_participants ap ON td.album_id = ap.album_id
+                    WHERE mc.id = ? AND mc.user_id = ? AND ap.user_id = ?
+                `).bind(commentId, user.userId, user.userId).first();
+
+                if (!comment) {
+                    return new Response(JSON.stringify({ error: 'Comment not found or access denied' }), { 
+                        status: 404, 
+                        headers: corsHeaders
+                    });
+                }
+
+                const now = new Date().toISOString();
+
+                // Update the comment
+                await env.DB.prepare(`
+                    UPDATE media_comments 
+                    SET comment = ?, updated_at = ?
+                    WHERE id = ?
+                `).bind(content.trim(), now, commentId).run();
+
+                // Return updated comment with author info
+                const updatedComment = {
+                    id: commentId,
+                    mediaId: (comment as any).media_id,
+                    userId: user.userId,
+                    content: content.trim(),
+                    createdAt: (comment as any).created_at,
+                    updatedAt: now,
+                    author: {
+                        id: user.userId,
+                        name: user.userId,
+                        avatar: `https://picsum.photos/80/80?random=${user.userId.length}`
+                    }
+                };
+
+                return new Response(JSON.stringify(updatedComment), {
+                    headers: corsHeaders
+                });
+            } catch (error) {
+                console.error('Error updating comment:', error);
+                return new Response(JSON.stringify({ error: 'Failed to update comment' }), { 
+                    status: 500, 
+                    headers: corsHeaders
+                });
+            }
+        }
+        
+        // Delete comment
+        if (url.pathname.match(/\/api\/comments\/([^\/]+)$/) && request.method === 'DELETE') {
+            const commentId = url.pathname.split('/')[3];
+            const { userId, password } = await request.json() as { userId: string; password: string };
+            const user = await authenticate(userId, password, env);
+            
+            if (!user) {
+                return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+                    status: 401, 
+                    headers: corsHeaders
+                });
+            }
+
+            try {
+                // Check if comment exists and user owns it
+                const comment = await env.DB.prepare(`
+                    SELECT id, user_id FROM media_comments WHERE id = ?
+                `).bind(commentId).first();
+
+                if (!comment || comment.user_id !== user.userId) {
+                    return new Response(JSON.stringify({ error: 'Comment not found or access denied' }), { 
+                        status: 404, 
+                        headers: corsHeaders
+                    });
+                }
+
+                // Delete the comment
+                await env.DB.prepare(`
+                    DELETE FROM media_comments WHERE id = ?
+                `).bind(commentId).run();
+
+                return new Response(JSON.stringify({ success: true }), {
+                    headers: corsHeaders
+                });
+            } catch (error) {
+                console.error('Error deleting comment:', error);
+                return new Response(JSON.stringify({ error: 'Failed to delete comment' }), { 
+                    status: 500, 
                     headers: corsHeaders
                 });
             }

@@ -292,6 +292,84 @@ class ApiService {
         return response.json();
     }
 
+    async getMediaComments(mediaId: string) {
+        const credentials = this.getCredentials();
+        const params = new URLSearchParams({
+            userId: credentials.userId || '',
+            password: credentials.password || ''
+        });
+        
+        const response = await fetch(`/api/media/${mediaId}/comments?${params}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to get comments: ${response.statusText}`);
+        }
+
+        return response.json();
+    }
+
+    async addMediaComment(mediaId: string, content: string) {
+        const credentials = this.getCredentials();
+        const response = await fetch(`/api/media/${mediaId}/comments`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ...credentials,
+                content
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to add comment: ${response.statusText}`);
+        }
+
+        return response.json();
+    }
+
+    async updateComment(commentId: string, content: string) {
+        const credentials = this.getCredentials();
+        const response = await fetch(`/api/comments/${commentId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ...credentials,
+                content
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to update comment: ${response.statusText}`);
+        }
+
+        return response.json();
+    }
+
+    async deleteComment(commentId: string) {
+        const credentials = this.getCredentials();
+        const response = await fetch(`/api/comments/${commentId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(credentials),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to delete comment: ${response.statusText}`);
+        }
+
+        return response.json();
+    }
+
     clearCredentials() {
         this.userId = null;
         this.password = null;

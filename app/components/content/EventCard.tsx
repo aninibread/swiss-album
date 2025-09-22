@@ -1,6 +1,7 @@
 import React from 'react';
 import { MediaGallery } from './MediaGallery';
 import type { TripEvent, Participant } from '../../types';
+import type { useCommentsManager } from '../../hooks';
 
 interface EventCardProps {
   event: TripEvent;
@@ -41,6 +42,7 @@ interface EventCardProps {
   // Refs and other props
   emojiButtonRefs: React.MutableRefObject<{[key: string]: HTMLButtonElement | null}>;
   addParticipantButtonRefs: React.MutableRefObject<{[key: string]: HTMLButtonElement | null}>;
+  commentsManager: ReturnType<typeof useCommentsManager>;
 }
 
 export function EventCard({
@@ -77,7 +79,8 @@ export function EventCard({
   onRemoveParticipant,
   onOpenAddParticipant,
   emojiButtonRefs,
-  addParticipantButtonRefs
+  addParticipantButtonRefs,
+  commentsManager
 }: EventCardProps) {
   const isSaving = savingEvent === event.id;
 
@@ -355,6 +358,7 @@ export function EventCard({
           onSetSelectedMedia={onSetSelectedMedia}
           onDeleteMedia={onDeleteMedia}
           onAddPhotos={onAddPhotos}
+          commentsManager={commentsManager}
         />
         
       </div>

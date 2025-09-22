@@ -14,6 +14,11 @@ export { EmojiPickerPortal } from './ui/EmojiPickerPortal';
 export { ParticipantDropdownPortal } from './ui/ParticipantDropdownPortal';
 export { DatePickerPortal } from './ui/DatePickerPortal';
 export { MediaModal } from './ui/MediaModal';
+export { CommentsList } from './ui/CommentsList';
+export { CommentItem } from './ui/CommentItem';
+export { AddCommentForm } from './ui/AddCommentForm';
+export { CommentButton } from './ui/CommentButton';
+export { MediaCommentsPanel } from './ui/MediaCommentsPanel';
 
 // Media Components
 export { VideoContainer } from './media/VideoContainer';
