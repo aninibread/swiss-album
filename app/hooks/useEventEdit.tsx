@@ -66,6 +66,8 @@ export function useEventEdit(options: UseEventEditOptions) {
     
     try {
       await api.updateEvent(eventId, updateData);
+      // Note: Cache management is now automatic via D1 database design
+      // Each event has its own cache entry, so updates are handled automatically
     } catch (error) {
       console.error('Failed to update event:', error);
       setError('Failed to update event');
@@ -153,6 +155,9 @@ export function useEventEdit(options: UseEventEditOptions) {
         if (editingEvent === eventId) {
           cancelEventEdit();
         }
+        
+        // Note: Cache cleanup is now automatic via D1 foreign key constraint
+        // ON DELETE CASCADE will remove the geocoding cache entry when the event is deleted
       } catch (error) {
         console.error('Failed to delete event:', error);
         setError('Failed to delete event');

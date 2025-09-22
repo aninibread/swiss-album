@@ -370,6 +370,101 @@ class ApiService {
         return response.json();
     }
 
+    async getEventGeocodingCache(eventIds: string[]) {
+        const credentials = this.getCredentials();
+        const response = await fetch('/api/events/geocoding-cache', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ...credentials,
+                eventIds
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to get event geocoding cache: ${response.statusText}`);
+        }
+
+        return response.json();
+    }
+
+    async storeEventGeocodingResults(geocodingResults: Array<{
+        eventId: string;
+        locationName: string;
+        coordinates?: { lat: number; lon: number };
+        status: 'success' | 'not_found' | 'outside_bounds';
+        formattedAddress?: string;
+        countryCode?: string;
+    }>) {
+        const credentials = this.getCredentials();
+        
+        // Clean the data to ensure no undefined values reach the server
+        const cleanedResults = geocodingResults.map(result => ({
+            eventId: result.eventId,
+            locationName: result.locationName,
+            coordinates: result.coordinates,
+            status: result.status,
+            formattedAddress: result.formattedAddress ?? null,
+            countryCode: result.countryCode ?? null
+        }));
+        
+        const requestBody = {
+            ...credentials,
+            geocodingResults: cleanedResults
+        };
+        
+        const requestBodyJSON = JSON.stringify(requestBody);
+        
+        console.log('API: Full PUT Request Details:');
+        console.log('URL:', '/api/events/geocoding-cache');
+        console.log('Method:', 'PUT');
+        console.log('Headers:', { 'Content-Type': 'application/json' });
+        console.log('Request Body (parsed):', requestBody);
+        console.log('Request Body (JSON string):', requestBodyJSON);
+        console.log('Request Body Length:', requestBodyJSON.length);
+        
+        // Show first few results in detail
+        console.log('First 3 geocoding results:');
+        cleanedResults.slice(0, 3).forEach((result, index) => {
+            console.log(`Result ${index}:`, {
+                eventId: result.eventId,
+                locationName: result.locationName,
+                coordinates: result.coordinates,
+                status: result.status,
+                formattedAddress: result.formattedAddress,
+                countryCode: result.countryCode
+            });
+        });
+        
+        const response = await fetch('/api/events/geocoding-cache', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: requestBodyJSON,
+        });
+
+        console.log('API: Response status:', response.status, response.statusText);
+
+        if (!response.ok) {
+            let errorDetails = '';
+            try {
+                const errorData = await response.json();
+                errorDetails = JSON.stringify(errorData);
+                console.error('API: Error response body:', errorData);
+            } catch {
+                errorDetails = await response.text();
+                console.error('API: Error response text:', errorDetails);
+            }
+            
+            throw new Error(`Failed to store event geocoding results: ${response.statusText} - ${errorDetails}`);
+        }
+
+        return response.json();
+    }
+
     clearCredentials() {
         this.userId = null;
         this.password = null;

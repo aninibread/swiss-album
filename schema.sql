@@ -89,3 +89,17 @@ CREATE TABLE event_participants (
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- Event geocoding cache
+CREATE TABLE event_geocoding_cache (
+    event_id TEXT PRIMARY KEY,
+    location_name TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    country_code TEXT,
+    formatted_address TEXT,
+    status TEXT CHECK (status IN ('success', 'not_found', 'outside_bounds')) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+);

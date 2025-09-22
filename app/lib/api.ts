@@ -35,6 +35,7 @@ async function fileToBase64(file: File): Promise<string> {
 
 export async function handleApiRequest(request: Request, env: Env): Promise<Response | null> {
     const url = new URL(request.url);
+    console.log(`API REQUEST: ${request.method} ${url.pathname}`);
     
     // Only handle API routes
     if (!url.pathname.startsWith('/api/')) {
@@ -103,6 +104,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         
         // Albums route
         if (url.pathname === '/api/albums' && request.method === 'POST') {
+            console.log('TEST LOG: Albums endpoint called');
             const { userId, password } = await request.json() as { userId: string; password: string };
             const user = await authenticate(userId, password, env);
             
@@ -277,6 +279,178 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
             });
         }
         
+        // Event geocoding cache - get cached locations for events
+        if (url.pathname === '/api/events/geocoding-cache' && request.method === 'POST') {
+            const { userId, password, eventIds } = await request.json() as { userId: string; password: string; eventIds: string[] };
+            const user = await authenticate(userId, password, env);
+            
+            if (!user) {
+                return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+                    status: 401, 
+                    headers: corsHeaders
+                });
+            }
+
+            try {
+                // Get cached locations from database for the given events
+                if (!eventIds || eventIds.length === 0) {
+                    return new Response(JSON.stringify({}), {
+                        headers: corsHeaders
+                    });
+                }
+                
+                // Use placeholders for the IN clause
+                const placeholders = eventIds.map(() => '?').join(', ');
+                const cachedResults = await env.DB.prepare(`
+                    SELECT event_id, location_name, latitude, longitude, status, created_at
+                    FROM event_geocoding_cache 
+                    WHERE event_id IN (${placeholders})
+                `).bind(...eventIds).all();
+
+                // Format results as an object map by event_id
+                const cache: Record<string, any> = {};
+                cachedResults.results?.forEach((row: any) => {
+                    cache[row.event_id] = {
+                        locationName: row.location_name,
+                        coordinates: row.latitude && row.longitude ? {
+                            lat: row.latitude,
+                            lon: row.longitude
+                        } : null,
+                        status: row.status,
+                        timestamp: new Date(row.created_at).getTime()
+                    };
+                });
+
+                return new Response(JSON.stringify(cache), {
+                    headers: corsHeaders
+                });
+            } catch (error) {
+                console.error('Event geocoding cache error:', error);
+                return new Response(JSON.stringify({ error: 'Cache lookup failed' }), { 
+                    status: 500, 
+                    headers: corsHeaders
+                });
+            }
+        }
+        
+        // Event geocoding cache - store geocoded results for events
+        console.log('Checking geocoding cache condition:', url.pathname, request.method);
+        if (url.pathname === '/api/events/geocoding-cache' && request.method === 'PUT') {
+            console.log('=== GEOCODING CACHE STORAGE API CALLED ===');
+            const { userId, password, geocodingResults } = await request.json() as { 
+                userId: string; 
+                password: string; 
+                geocodingResults: Array<{
+                    eventId: string;
+                    locationName: string;
+                    coordinates?: { lat: number; lon: number };
+                    status: 'success' | 'not_found' | 'outside_bounds';
+                    formattedAddress?: string;
+                    countryCode?: string;
+                }>
+            };
+            const user = await authenticate(userId, password, env);
+            
+            if (!user) {
+                return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+                    status: 401, 
+                    headers: corsHeaders
+                });
+            }
+
+            try {
+                const now = new Date().toISOString();
+                
+                for (const result of geocodingResults) {
+                    try {
+                        console.log('Storing geocoding result:', {
+                            eventId: result.eventId,
+                            locationName: result.locationName,
+                            status: result.status,
+                            coordinates: result.coordinates
+                        });
+                        
+                        // Very defensive value preparation - ensure NO undefined values
+                        const eventId = result.eventId || null;
+                        const locationName = result.locationName || null;
+                        const latitude = (result.coordinates && typeof result.coordinates.lat === 'number') ? result.coordinates.lat : null;
+                        const longitude = (result.coordinates && typeof result.coordinates.lon === 'number') ? result.coordinates.lon : null;
+                        const countryCode = result.countryCode || null;
+                        const formattedAddress = result.formattedAddress || null;
+                        const status = result.status || 'not_found';
+                        
+                        // Debug log the individual values
+                        console.log(`Processing event ${result.eventId}:`, {
+                            eventId: eventId,
+                            locationName: locationName,
+                            latitude: latitude,
+                            longitude: longitude,
+                            countryCode: countryCode,
+                            formattedAddress: formattedAddress,
+                            status: status,
+                            hasCoordinates: !!result.coordinates
+                        });
+                        
+                        // Final safety check - convert any remaining undefined to null
+                        const values = [eventId, locationName, latitude, longitude, countryCode, formattedAddress, status, now, now].map(v => 
+                            v === undefined ? null : v
+                        );
+                        
+                        // Use INSERT OR REPLACE to handle conflicts
+                        await env.DB.prepare(`
+                            INSERT OR REPLACE INTO event_geocoding_cache (
+                                event_id,
+                                location_name, 
+                                latitude, 
+                                longitude, 
+                                country_code,
+                                formatted_address,
+                                status, 
+                                created_at, 
+                                updated_at
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        `).bind(...values).run();
+                        
+                        console.log('Successfully stored geocoding result for event:', result.eventId);
+                    } catch (dbError) {
+                        console.error('Failed to store individual geocoding result:', {
+                            eventId: result.eventId,
+                            error: dbError,
+                            errorMessage: dbError instanceof Error ? dbError.message : 'Unknown error'
+                        });
+                        throw dbError; // Re-throw to trigger the outer catch
+                    }
+                }
+
+                console.log('Successfully stored all geocoding results, count:', geocodingResults.length);
+                return new Response(JSON.stringify({ success: true, cached: geocodingResults.length }), {
+                    headers: corsHeaders
+                });
+            } catch (error) {
+                console.error('Event geocoding cache storage error:', error);
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                
+                // Check if it's a D1 type error
+                if (errorMessage.includes('D1_TYPE_ERROR')) {
+                    return new Response(JSON.stringify({ 
+                        error: 'Database error', 
+                        details: errorMessage 
+                    }), { 
+                        status: 500, 
+                        headers: corsHeaders
+                    });
+                }
+                
+                return new Response(JSON.stringify({ 
+                    error: 'Cache storage failed', 
+                    details: errorMessage 
+                }), { 
+                    status: 500, 
+                    headers: corsHeaders
+                });
+            }
+        }
+        
         // Update event
         if (url.pathname.match(/\/api\/events\/([^\/]+)$/) && request.method === 'PUT') {
             const eventId = url.pathname.split('/')[3];
@@ -291,11 +465,145 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
             }
 
             try {
+                // Convert all undefined values to null for D1 compatibility
+                const cleanName = name === undefined ? null : name;
+                const cleanDescription = description === undefined ? null : description;
+                const cleanEmoji = emoji === undefined ? null : emoji;
+                const cleanLocation = location === undefined ? null : location;
+                const cleanEventId = eventId === undefined ? null : eventId;
+                
+                // Get the current event to check if location is changing
+                const currentEvent = await env.DB.prepare(`
+                    SELECT location FROM events WHERE id = ?
+                `).bind(cleanEventId).first();
+                
                 await env.DB.prepare(`
                     UPDATE events 
                     SET name = ?, description = ?, emoji = ?, location = ?
                     WHERE id = ?
-                `).bind(name, description, emoji, location, eventId).run();
+                `).bind(cleanName, cleanDescription, cleanEmoji, cleanLocation, cleanEventId).run();
+                
+                // If location changed, invalidate the geocoding cache and re-geocode new location
+                if (currentEvent && currentEvent.location !== cleanLocation && cleanLocation) {
+                    console.log('Location changed for event', cleanEventId, 'from', currentEvent.location, 'to', cleanLocation);
+                    await env.DB.prepare(`
+                        DELETE FROM event_geocoding_cache WHERE event_id = ?
+                    `).bind(cleanEventId).run();
+                    console.log('Invalidated geocoding cache for event:', cleanEventId);
+                    
+                    // Geocode the new location immediately
+                    try {
+                        const geocodeResponse = await fetch(`https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(cleanLocation)}&bias=countrycode:ch&limit=1&apiKey=02e88c55f4b445fdaad08a07c030fd74`);
+                        const geocodeData = await geocodeResponse.json();
+                        
+                        console.log(`Geocoding new location "${cleanLocation}" for event ${cleanEventId}`);
+                        
+                        if (geocodeData.features && geocodeData.features.length > 0) {
+                            const feature = geocodeData.features[0];
+                            if (feature.geometry && feature.geometry.coordinates) {
+                                const coordinates = {
+                                    lon: feature.geometry.coordinates[0],
+                                    lat: feature.geometry.coordinates[1]
+                                };
+                                
+                                const properties = feature.properties || {};
+                                const formattedAddress = properties.formatted || '';
+                                const countryCode = properties.country_code || '';
+                                
+                                // Check if coordinates are in Switzerland area
+                                const isInSwitzerlandArea = 
+                                    coordinates.lat >= 45 && coordinates.lat <= 48 &&
+                                    coordinates.lon >= 5 && coordinates.lon <= 11;
+                                
+                                if (isInSwitzerlandArea) {
+                                    console.log(`Found valid Swiss coordinates for "${cleanLocation}":`, coordinates);
+                                    
+                                    // Store new geocoding result in cache
+                                    const now = new Date().toISOString();
+                                    const values = [cleanEventId, cleanLocation, coordinates.lat, coordinates.lon, countryCode, formattedAddress, 'success', now, now].map(v => 
+                                        v === undefined ? null : v
+                                    );
+                                    
+                                    await env.DB.prepare(`
+                                        INSERT INTO event_geocoding_cache (
+                                            event_id,
+                                            location_name, 
+                                            latitude, 
+                                            longitude, 
+                                            country_code,
+                                            formatted_address,
+                                            status, 
+                                            created_at, 
+                                            updated_at
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    `).bind(...values).run();
+                                    
+                                    console.log('Stored new geocoding result for updated location:', cleanEventId);
+                                } else {
+                                    console.log(`Coordinates outside Switzerland for "${cleanLocation}":`, coordinates);
+                                    // Store as outside bounds
+                                    const now = new Date().toISOString();
+                                    const values = [cleanEventId, cleanLocation, null, null, countryCode, formattedAddress, 'outside_bounds', now, now];
+                                    
+                                    await env.DB.prepare(`
+                                        INSERT INTO event_geocoding_cache (
+                                            event_id,
+                                            location_name, 
+                                            latitude, 
+                                            longitude, 
+                                            country_code,
+                                            formatted_address,
+                                            status, 
+                                            created_at, 
+                                            updated_at
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    `).bind(...values).run();
+                                }
+                            } else {
+                                console.log(`No coordinates found for "${cleanLocation}"`);
+                                // Store as not found
+                                const now = new Date().toISOString();
+                                const values = [cleanEventId, cleanLocation, null, null, null, null, 'not_found', now, now];
+                                
+                                await env.DB.prepare(`
+                                    INSERT INTO event_geocoding_cache (
+                                        event_id,
+                                        location_name, 
+                                        latitude, 
+                                        longitude, 
+                                        country_code,
+                                        formatted_address,
+                                        status, 
+                                        created_at, 
+                                        updated_at
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                `).bind(...values).run();
+                            }
+                        } else {
+                            console.log(`No geocoding results for "${cleanLocation}"`);
+                            // Store as not found
+                            const now = new Date().toISOString();
+                            const values = [cleanEventId, cleanLocation, null, null, null, null, 'not_found', now, now];
+                            
+                            await env.DB.prepare(`
+                                INSERT INTO event_geocoding_cache (
+                                    event_id,
+                                    location_name, 
+                                    latitude, 
+                                    longitude, 
+                                    country_code,
+                                    formatted_address,
+                                    status, 
+                                    created_at, 
+                                    updated_at
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            `).bind(...values).run();
+                        }
+                    } catch (geocodeError) {
+                        console.error('Failed to geocode new location:', geocodeError);
+                        // Don't fail the event update if geocoding fails
+                    }
+                }
                 
                 return new Response(JSON.stringify({ success: true }), {
                     headers: corsHeaders
@@ -324,11 +632,20 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
             const eventId = `event-${Date.now()}`;
             
             try {
+                // Convert all undefined values to null for D1 compatibility
+                const cleanEventId = eventId === undefined ? null : eventId;
+                const cleanTripDayId = tripDayId === undefined ? null : tripDayId;
+                const cleanName = name === undefined ? null : name;
+                const cleanDescription = description === undefined ? null : description;
+                const cleanEmoji = emoji === undefined ? null : emoji;
+                const cleanLocation = location === undefined ? null : location;
+                const cleanSortOrder = sortOrder === undefined ? null : sortOrder;
+                
                 // Create the event
                 await env.DB.prepare(`
                     INSERT INTO events (id, trip_day_id, name, description, emoji, location, sort_order)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                `).bind(eventId, tripDayId, name, description, emoji, location, sortOrder).run();
+                `).bind(cleanEventId, cleanTripDayId, cleanName, cleanDescription, cleanEmoji, cleanLocation, cleanSortOrder).run();
                 
                 // Add participants if provided
                 if (participantIds && Array.isArray(participantIds)) {
@@ -901,6 +1218,178 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         }
         
         // Get comments for media
+        if (url.pathname === '/api/events/geocoding-cache' && request.method === 'POST') {
+            const { userId, password, eventIds } = await request.json() as { userId: string; password: string; eventIds: string[] };
+            const user = await authenticate(userId, password, env);
+            
+            if (!user) {
+                return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+                    status: 401, 
+                    headers: corsHeaders
+                });
+            }
+
+            try {
+                // Get cached locations from database for the given events
+                if (!eventIds || eventIds.length === 0) {
+                    return new Response(JSON.stringify({}), {
+                        headers: corsHeaders
+                    });
+                }
+                
+                // Use placeholders for the IN clause
+                const placeholders = eventIds.map(() => '?').join(', ');
+                const cachedResults = await env.DB.prepare(`
+                    SELECT event_id, location_name, latitude, longitude, status, created_at
+                    FROM event_geocoding_cache 
+                    WHERE event_id IN (${placeholders})
+                `).bind(...eventIds).all();
+
+                // Format results as an object map by event_id
+                const cache: Record<string, any> = {};
+                cachedResults.results?.forEach((row: any) => {
+                    cache[row.event_id] = {
+                        locationName: row.location_name,
+                        coordinates: row.latitude && row.longitude ? {
+                            lat: row.latitude,
+                            lon: row.longitude
+                        } : null,
+                        status: row.status,
+                        timestamp: new Date(row.created_at).getTime()
+                    };
+                });
+
+                return new Response(JSON.stringify(cache), {
+                    headers: corsHeaders
+                });
+            } catch (error) {
+                console.error('Event geocoding cache error:', error);
+                return new Response(JSON.stringify({ error: 'Cache lookup failed' }), { 
+                    status: 500, 
+                    headers: corsHeaders
+                });
+            }
+        }
+        
+        // Event geocoding cache - store geocoded results for events
+        console.log('Checking geocoding cache condition:', url.pathname, request.method);
+        if (url.pathname === '/api/events/geocoding-cache' && request.method === 'PUT') {
+            console.log('=== GEOCODING CACHE STORAGE API CALLED ===');
+            const { userId, password, geocodingResults } = await request.json() as { 
+                userId: string; 
+                password: string; 
+                geocodingResults: Array<{
+                    eventId: string;
+                    locationName: string;
+                    coordinates?: { lat: number; lon: number };
+                    status: 'success' | 'not_found' | 'outside_bounds';
+                    formattedAddress?: string;
+                    countryCode?: string;
+                }>
+            };
+            const user = await authenticate(userId, password, env);
+            
+            if (!user) {
+                return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+                    status: 401, 
+                    headers: corsHeaders
+                });
+            }
+
+            try {
+                const now = new Date().toISOString();
+                
+                for (const result of geocodingResults) {
+                    try {
+                        console.log('Storing geocoding result:', {
+                            eventId: result.eventId,
+                            locationName: result.locationName,
+                            status: result.status,
+                            coordinates: result.coordinates
+                        });
+                        
+                        // Very defensive value preparation - ensure NO undefined values
+                        const eventId = result.eventId || null;
+                        const locationName = result.locationName || null;
+                        const latitude = (result.coordinates && typeof result.coordinates.lat === 'number') ? result.coordinates.lat : null;
+                        const longitude = (result.coordinates && typeof result.coordinates.lon === 'number') ? result.coordinates.lon : null;
+                        const countryCode = result.countryCode || null;
+                        const formattedAddress = result.formattedAddress || null;
+                        const status = result.status || 'not_found';
+                        
+                        // Debug log the individual values
+                        console.log(`Processing event ${result.eventId}:`, {
+                            eventId: eventId,
+                            locationName: locationName,
+                            latitude: latitude,
+                            longitude: longitude,
+                            countryCode: countryCode,
+                            formattedAddress: formattedAddress,
+                            status: status,
+                            hasCoordinates: !!result.coordinates
+                        });
+                        
+                        // Final safety check - convert any remaining undefined to null
+                        const values = [eventId, locationName, latitude, longitude, countryCode, formattedAddress, status, now, now].map(v => 
+                            v === undefined ? null : v
+                        );
+                        
+                        // Use INSERT OR REPLACE to handle conflicts
+                        await env.DB.prepare(`
+                            INSERT OR REPLACE INTO event_geocoding_cache (
+                                event_id,
+                                location_name, 
+                                latitude, 
+                                longitude, 
+                                country_code,
+                                formatted_address,
+                                status, 
+                                created_at, 
+                                updated_at
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        `).bind(...values).run();
+                        
+                        console.log('Successfully stored geocoding result for event:', result.eventId);
+                    } catch (dbError) {
+                        console.error('Failed to store individual geocoding result:', {
+                            eventId: result.eventId,
+                            error: dbError,
+                            errorMessage: dbError instanceof Error ? dbError.message : 'Unknown error'
+                        });
+                        throw dbError; // Re-throw to trigger the outer catch
+                    }
+                }
+
+                console.log('Successfully stored all geocoding results, count:', geocodingResults.length);
+                return new Response(JSON.stringify({ success: true, cached: geocodingResults.length }), {
+                    headers: corsHeaders
+                });
+            } catch (error) {
+                console.error('Event geocoding cache storage error:', error);
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                
+                // Check if it's a D1 type error
+                if (errorMessage.includes('D1_TYPE_ERROR')) {
+                    return new Response(JSON.stringify({ 
+                        error: 'Database error', 
+                        details: errorMessage 
+                    }), { 
+                        status: 500, 
+                        headers: corsHeaders
+                    });
+                }
+                
+                return new Response(JSON.stringify({ 
+                    error: 'Cache storage failed', 
+                    details: errorMessage 
+                }), { 
+                    status: 500, 
+                    headers: corsHeaders
+                });
+            }
+        }
+        
+        // Get comments for media
         if (url.pathname.match(/\/api\/media\/([^\/]+)\/comments$/) && request.method === 'GET') {
             const mediaId = url.pathname.split('/')[3];
             const userId = url.searchParams.get('userId');
@@ -1184,6 +1673,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
             }
         }
         
+        console.log('END OF API HANDLER - No route matched');
         return new Response(JSON.stringify({ error: 'Not found' }), { 
             status: 404, 
             headers: corsHeaders 

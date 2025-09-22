@@ -143,19 +143,42 @@ export default function Home() {
     });
     
     // Use a seeded random to prevent reshuffling on every render
-    // Take first 4 items (will be consistent until tripDays changes)
-    return allMedia.slice(0, 4);
+    // Take first 5 items (will be consistent until tripDays changes)
+    return allMedia.slice(0, 5);
   }, [tripDays]); // Only recalculate when tripDays changes
+
+  // All events from all days - memoized for map generation
+  const allEvents = useMemo(() => {
+    return tripDays.flatMap(day => day.events);
+  }, [tripDays]);
+
+  // Total photo count - memoized to prevent recalculation
+  const totalPhotoCount = useMemo(() => {
+    return tripDays.reduce((total, day) => {
+      return total + day.events.reduce((dayTotal, event) => {
+        return dayTotal + event.photos.length;
+      }, 0);
+    }, 0);
+  }, [tripDays]);
+
+  // Total video count - memoized to prevent recalculation
+  const totalVideoCount = useMemo(() => {
+    return tripDays.reduce((total, day) => {
+      return total + day.events.reduce((dayTotal, event) => {
+        return dayTotal + event.videos.length;
+      }, 0);
+    }, 0);
+  }, [tripDays]);
 
   // Available participants for dropdown - memoized to prevent recalculation
   const availableParticipants = useMemo(() => {
     if (!showAddParticipant) return [];
     const eventId = showAddParticipant.replace('edit-', '').replace('view-', '');
-    const currentEvent = tripDays.flatMap(day => day.events).find(event => event.id === eventId);
+    const currentEvent = allEvents.find(event => event.id === eventId);
     return allParticipants.filter(p => 
       !currentEvent?.participants.some(ep => ep.id === p.id)
     );
-  }, [allParticipants, tripDays, showAddParticipant]);
+  }, [allParticipants, allEvents, showAddParticipant]);
 
   // Load album data when authenticated
   useEffect(() => {
@@ -436,22 +459,29 @@ export default function Home() {
         {/* Album Header */}
         <AlbumHeader
           title="Swiss Adventure"
-          subtitle="July 2024 · 136 photos"
+          subtitle={`July 2024 · ${totalPhotoCount} photo${totalPhotoCount !== 1 ? 's' : ''} · ${totalVideoCount} video${totalVideoCount !== 1 ? 's' : ''}`}
           isEditMode={isEditMode}
           onEditModeToggle={toggleEditMode}
           onLogout={handleLogout}
         >
-          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-            <div className="flex-1 lg:flex-[2]">
+          <div className="space-y-6 lg:space-y-8">
+            {/* First row: Our Journey and Participants */}
+            <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+              <div className="flex-1 lg:flex-[2]">
+                <JourneyMap events={allEvents} />
+              </div>
+              
+              <div className="w-full lg:w-64">
+                <ParticipantsList participants={allParticipants} />
+              </div>
+            </div>
+            
+            {/* Second row: Trip Highlights */}
+            <div className="w-full">
               <TripHighlights
                 highlights={randomHighlights}
                 onImageClick={setSelectedImage}
               />
-            </div>
-            
-            <div className="w-full lg:w-64 space-y-6">
-              <JourneyMap />
-              <ParticipantsList participants={allParticipants} />
             </div>
           </div>
         </AlbumHeader>

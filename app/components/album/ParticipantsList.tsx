@@ -9,8 +9,8 @@ interface ParticipantsListProps {
 export function ParticipantsList({ participants, title = 'Participants' }: ParticipantsListProps) {
   return (
     <div>
-      <h4 className="text-sm font-medium text-stone-700 mb-2">{title}</h4>
-      <div className="space-y-2">
+      <h3 className="text-lg font-display font-medium text-stone-900 mb-3">{title}</h3>
+      <div className="space-y-2 mt-4">
         {participants.map((participant) => (
           <div key={participant.id} className="flex items-center space-x-2">
             <img
