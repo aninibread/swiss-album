@@ -69,13 +69,13 @@ const CommentsHeader: React.FC<{ commentCount: number }> = ({ commentCount }) =>
  * Action button component for consistency
  */
 const ActionButton: React.FC<{
-  onClick: () => void;
+  onClick: (e: React.MouseEvent) => void;
   icon: React.ReactNode;
   children: React.ReactNode;
 }> = ({ onClick, icon, children }) => (
   <button
     onClick={onClick}
-    className="flex items-center space-x-2 text-xs text-stone-600 hover:text-stone-800 hover:bg-white/10 rounded-lg px-3 py-2 transition-colors"
+    className="flex items-center space-x-2 text-xs text-stone-600 hover:text-stone-800 hover:bg-white/10 rounded-lg px-3 py-2 transition-colors cursor-pointer"
   >
     {icon}
     <span>{children}</span>
@@ -153,7 +153,9 @@ export const MediaComments: React.FC<MediaCommentsProps> = ({
   // Get comment data from manager
   const comments = commentsManager.getComments(mediaUrl);
   const isLoading = commentsManager.isLoading(mediaUrl);
+  
   const hasComments = comments.length > 0;
+  
   const latestComment = hasComments ? comments[comments.length - 1] : null;
 
   // Event handlers
@@ -176,7 +178,9 @@ export const MediaComments: React.FC<MediaCommentsProps> = ({
       <div className="border-t border-white/20 bg-white/5 px-3 py-2">
         <div className="flex items-center space-x-4">
           <ActionButton
-            onClick={() => setCommentState('expanded')}
+            onClick={(e) => {
+              setCommentState('expanded');
+            }}
             icon={<CommentIcon />}
           >
             View all comments
@@ -184,7 +188,9 @@ export const MediaComments: React.FC<MediaCommentsProps> = ({
           
           {currentUserId && (
             <ActionButton
-              onClick={() => setCommentState('add-form')}
+              onClick={(e) => {
+                setCommentState('add-form');
+              }}
               icon={<PlusIcon />}
             >
               Add comment
@@ -201,7 +207,9 @@ export const MediaComments: React.FC<MediaCommentsProps> = ({
       <div className="bg-white/5 px-3 py-2">
         <div className="flex items-center space-x-4">
           <ActionButton
-            onClick={() => setCommentState('add-form')}
+            onClick={(e) => {
+              setCommentState('add-form');
+            }}
             icon={<PlusIcon />}
           >
             Add comment
@@ -256,7 +264,7 @@ export const MediaComments: React.FC<MediaCommentsProps> = ({
       <div className="border-t border-white/20 bg-white/5 px-3 py-2">
         <div className="flex items-center space-x-4">
           <ActionButton
-            onClick={() => setCommentState('collapsed')}
+            onClick={(e) => setCommentState('collapsed')}
             icon={
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -268,7 +276,7 @@ export const MediaComments: React.FC<MediaCommentsProps> = ({
           
           {currentUserId && (
             <ActionButton
-              onClick={() => setCommentState('add-form')}
+              onClick={(e) => setCommentState('add-form')}
               icon={<PlusIcon />}
             >
               Add comment
@@ -293,6 +301,7 @@ export const MediaComments: React.FC<MediaCommentsProps> = ({
   if (isLoading && commentState === 'collapsed' && !hasComments) {
     return <div className="space-y-2">{renderLoading()}</div>;
   }
+
 
   return (
     <div className="space-y-2">

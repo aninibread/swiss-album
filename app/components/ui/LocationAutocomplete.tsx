@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 interface LocationSuggestion {
   properties: {
@@ -33,10 +34,23 @@ export function LocationAutocomplete({
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [dropdownPosition, setDropdownPosition] = useState<{top: number, left: number, width: number} | null>(null);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<number | undefined>(undefined);
+
+  // Update dropdown position based on input position
+  const updateDropdownPosition = () => {
+    if (!inputRef.current) return;
+    
+    const inputRect = inputRef.current.getBoundingClientRect();
+    setDropdownPosition({
+      top: inputRect.bottom + window.scrollY + 4,
+      left: inputRect.left + window.scrollX,
+      width: inputRect.width
+    });
+  };
 
   // Debounced search function
   const searchLocations = async (query: string) => {
@@ -55,6 +69,9 @@ export function LocationAutocomplete({
       if (data.features && Array.isArray(data.features)) {
         setSuggestions(data.features);
         setShowDropdown(data.features.length > 0);
+        if (data.features.length > 0) {
+          updateDropdownPosition();
+        }
       } else {
         setSuggestions([]);
         setShowDropdown(false);
@@ -173,6 +190,7 @@ export function LocationAutocomplete({
         onKeyDown={handleKeyDown}
         onFocus={() => {
           if (suggestions.length > 0) {
+            updateDropdownPosition();
             setShowDropdown(true);
           }
         }}
@@ -188,36 +206,41 @@ export function LocationAutocomplete({
         </div>
       )}
 
-      {/* Dropdown */}
-      {showDropdown && suggestions.length > 0 && (
-        <div
-          ref={dropdownRef}
-          className="absolute top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto z-[9999] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-gray-400"
-          style={{ 
-            left: -4,
-            right: 0
-          }}
-        >
-          {suggestions.map((suggestion, index) => (
-            <button
-              key={`${suggestion.properties.place_id || index}-${suggestion.properties.formatted}`}
-              onClick={(e) => handleSuggestionClick(suggestion, e)}
-              className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-100 focus:bg-gray-100 focus:outline-none transition-colors ${
-                index === selectedIndex ? 'bg-blue-50 text-blue-900' : 'text-gray-900'
-              }`}
-            >
-              <div className="font-normal">
-                {suggestion.properties.name || suggestion.properties.formatted}
-              </div>
-              {suggestion.properties.name && suggestion.properties.formatted !== suggestion.properties.name && (
-                <div className="text-xs text-gray-500 mt-0.5 font-light">
-                  {suggestion.properties.formatted}
+      {/* Dropdown - rendered in portal */}
+      {showDropdown && suggestions.length > 0 && dropdownPosition && typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className="absolute bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto z-[99999] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-gray-400"
+            style={{ 
+              top: dropdownPosition.top,
+              left: dropdownPosition.left,
+              width: dropdownPosition.width,
+              position: 'absolute'
+            }}
+          >
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={`${suggestion.properties.place_id || index}-${suggestion.properties.formatted}`}
+                onClick={(e) => handleSuggestionClick(suggestion, e)}
+                className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-100 focus:bg-gray-100 focus:outline-none transition-colors ${
+                  index === selectedIndex ? 'bg-blue-50 text-blue-900' : 'text-gray-900'
+                }`}
+              >
+                <div className="font-normal">
+                  {suggestion.properties.name || suggestion.properties.formatted}
                 </div>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
+                {suggestion.properties.name && suggestion.properties.formatted !== suggestion.properties.name && (
+                  <div className="text-xs text-gray-500 mt-0.5 font-light">
+                    {suggestion.properties.formatted}
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>,
+          document.body
+        )
+      }
     </div>
   );
 }

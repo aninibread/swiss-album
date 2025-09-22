@@ -28,9 +28,7 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
     
     try {
       const eventIds = eventsWithLocations.map(e => e.id);
-      console.log('JourneyMap: Loading cache from D1 for events:', eventIds);
       const cache = await api.getEventGeocodingCache(eventIds) as Record<string, any>;
-      console.log('JourneyMap: Loaded cache from D1:', cache);
       return cache || {};
     } catch (error) {
       console.warn('Failed to load event geocoding cache from database:', error);
@@ -48,23 +46,7 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
     countryCode?: string;
   }>) => {
     try {
-      console.log('JourneyMap: Saving event geocoding results to D1:', geocodingResults);
-      
-      // Debug each result to see if eventId is valid
-      geocodingResults.forEach((result, index) => {
-        console.log(`JourneyMap: Result ${index}:`, {
-          eventId: result.eventId,
-          eventIdType: typeof result.eventId,
-          locationName: result.locationName,
-          status: result.status,
-          hasCoordinates: !!result.coordinates,
-          formattedAddress: result.formattedAddress,
-          countryCode: result.countryCode
-        });
-      });
-      
       const result = await api.storeEventGeocodingResults(geocodingResults);
-      console.log('JourneyMap: Successfully saved to D1 cache, result:', result);
     } catch (error) {
       console.error('Failed to save event geocoding cache to database:', error);
       
@@ -86,16 +68,7 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
   const eventsWithLocations = React.useMemo(() => {
     const eventLocations: Array<{id: string; location: string; name: string}> = [];
     
-    console.log('JourneyMap: Processing events:', events.length);
-    
     events.forEach(event => {
-      console.log('Event:', {
-        id: event.id,
-        idType: typeof event.id,
-        name: event.name,
-        location: event.location
-      });
-      
       if (event.location && event.location.trim() && event.location !== 'Add location') {
         if (!event.id) {
           console.error('JourneyMap: Event has no ID!', event);
@@ -110,7 +83,6 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
       }
     });
     
-    console.log('JourneyMap: Events with locations found:', eventLocations);
     return eventLocations;
   }, [events]);
 
@@ -123,7 +95,6 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
     }
 
     const geocodeAndGenerateMap = async () => {
-      console.log('JourneyMap: Starting geocoding for events:', eventsWithLocations);
       setIsLoading(true);
       const geocodedLocations: EventLocation[] = [];
       const newGeocodingResults: Array<{
@@ -139,7 +110,6 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
         // Load cache from D1 database for all events with locations
         const dbCache = await loadCacheFromDatabase(eventsWithLocations);
         setGeocodingCache(dbCache);
-        console.log('JourneyMap: Loaded D1 cache:', dbCache);
         
         // Geocode each event's location
         for (const eventLocation of eventsWithLocations) {
@@ -147,23 +117,17 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
           const cached = dbCache[eventLocation.id];
           
           if (cached && cached.coordinates) {
-            console.log(`JourneyMap: Using D1 cached coordinates for event "${eventLocation.name}" (${eventLocation.location}):`, cached.coordinates);
             geocodedLocations.push({
               name: eventLocation.location,
               coordinates: cached.coordinates
             });
             continue;
           } else if (cached && cached.status !== 'success') {
-            console.log(`JourneyMap: Event "${eventLocation.name}" location cached as ${cached.status}, skipping geocoding`);
             continue;
           }
-          
-          console.log(`JourneyMap: Geocoding "${eventLocation.location}" for event "${eventLocation.name}" (not in D1 cache)`);
           try {
             const response = await fetch(`https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(eventLocation.location)}&bias=countrycode:ch&limit=1&apiKey=02e88c55f4b445fdaad08a07c030fd74`);
             const data = await response.json() as { features?: any[] };
-            
-            console.log(`JourneyMap: Geocoding response for "${eventLocation.location}":`, data);
             
             if (data.features && data.features.length > 0) {
               const feature = data.features[0];
@@ -184,7 +148,6 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
                   coordinates.lon >= 5 && coordinates.lon <= 11;
                 
                 if (isInSwitzerlandArea) {
-                  console.log(`JourneyMap: Found valid Swiss coordinates for "${eventLocation.location}":`, coordinates);
                   geocodedLocations.push({
                     name: eventLocation.location,
                     coordinates
@@ -200,7 +163,6 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
                     countryCode: countryCode || undefined
                   });
                 } else {
-                  console.log(`JourneyMap: Rejected coordinates outside Switzerland for "${eventLocation.location}":`, coordinates);
                   // Cache the rejection (coordinates outside bounds)
                   newGeocodingResults.push({
                     eventId: eventLocation.id,
@@ -211,7 +173,6 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
                   });
                 }
               } else {
-                console.log(`JourneyMap: No coordinates found for "${eventLocation.location}"`);
                 // Cache the no-coordinates result
                 newGeocodingResults.push({
                   eventId: eventLocation.id,
@@ -222,7 +183,6 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
                 });
               }
             } else {
-              console.log(`JourneyMap: No features found for "${eventLocation.location}"`);
               // Cache the no-features result
               newGeocodingResults.push({
                 eventId: eventLocation.id,
@@ -244,16 +204,12 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
         // Save new geocoding results to D1 database
         if (newGeocodingResults.length > 0) {
           await saveCacheToDatabase(newGeocodingResults);
-          console.log('JourneyMap: Saved new geocoding results to D1 cache');
         }
-
-        console.log('JourneyMap: All geocoded locations:', geocodedLocations);
         setLocations(geocodedLocations);
 
         // Generate static map URL
         if (geocodedLocations.some(loc => loc.coordinates)) {
           const validLocations = geocodedLocations.filter(loc => loc.coordinates);
-          console.log('JourneyMap: Valid locations with coordinates:', validLocations);
           
           if (validLocations.length > 0) {
             // Calculate bounds of all locations
@@ -274,16 +230,12 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
             const lonSpan = maxLon - minLon;
             const maxSpan = Math.max(latSpan, lonSpan);
 
-            console.log('JourneyMap: Location bounds:', { minLat, maxLat, minLon, maxLon });
-            console.log('JourneyMap: Center:', { centerLat, centerLon });
-            console.log('JourneyMap: Span:', { latSpan, lonSpan, maxSpan });
 
             // Create markers string
             const markersParams = validLocations.map((loc, index) => {
               const colors = ['%23bb3f73', '%234c905a', '%23e32020', '%233b82f6', '%23f59e0b', '%238b5cf6'];
               const color = colors[index % colors.length];
               const marker = `lonlat%3A${loc.coordinates!.lon}%2C${loc.coordinates!.lat}%3Btype%3Amaterial%3Bcolor%3A${color}%3Bsize%3Ax-large`;
-              console.log(`JourneyMap: Marker for "${loc.name}":`, marker);
               return marker;
             }).join('%7C');
 
@@ -307,7 +259,6 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
 
             const apiKey = '02e88c55f4b445fdaad08a07c030fd74';
             
-            console.log('JourneyMap: Calculated zoom:', zoom);
 
             // TEMPORARY: Test with known Swiss coordinates to verify map works
             const testMode = false;
@@ -319,7 +270,6 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
               finalCenterLon = 8.2275;
               finalZoom = 7;
               finalMarkers = 'lonlat%3A8.5417%2C47.3769%3Btype%3Amaterial%3Bcolor%3A%23bb3f73%3Bsize%3Ax-large%7Clonlat%3A8.3093%2C47.0502%3Btype%3Amaterial%3Bcolor%3A%234c905a%3Bsize%3Ax-large%7Clonlat%3A7.4474%2C46.9480%3Btype%3Amaterial%3Bcolor%3A%23e32020%3Bsize%3Ax-large';
-              console.log('JourneyMap: Using TEST MODE with Swiss cities');
             } else {
               finalCenterLat = centerLat;
               finalCenterLon = centerLon;
@@ -329,13 +279,10 @@ export function JourneyMap({ title = 'Our Journey', events = [] }: JourneyMapPro
 
             const mapUrl = `https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=1200&height=500&center=lonlat%3A${finalCenterLon}%2C${finalCenterLat}&zoom=${finalZoom}&marker=${finalMarkers}&apiKey=${apiKey}`;
             
-            console.log('JourneyMap: Generated map URL:', mapUrl);
             setMapImageUrl(mapUrl);
           } else {
-            console.log('JourneyMap: No valid locations found for map generation');
           }
         } else {
-          console.log('JourneyMap: No geocoded locations found');
         }
       } catch (error) {
         console.error('Failed to generate map:', error);

@@ -89,7 +89,7 @@ export function MediaGallery({
 
   return (
     <>
-      <div className="columns-1 sm:columns-2 gap-3 space-y-3 relative" style={{columnFill: 'balance', zIndex: -1}}>
+      <div className="columns-1 sm:columns-2 gap-3 space-y-3 relative" style={{columnFill: 'balance'}}>
         {/* Photos */}
         {photos.map((photo, index) => {
           const photoUrl = typeof photo === 'string' ? photo : photo.url;
