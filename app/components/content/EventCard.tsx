@@ -1,5 +1,6 @@
 import React from 'react';
 import { MediaGallery } from './MediaGallery';
+import { LocationAutocomplete } from '../ui/LocationAutocomplete';
 import type { TripEvent, Participant } from '../../types';
 import type { useCommentsManager } from '../../hooks';
 
@@ -214,20 +215,17 @@ export function EventCard({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      value={editLocation}
-                      onChange={(e) => onSetEditLocation(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') {
-                          onCancelEdit();
-                        }
-                      }}
-                      className="text-xs text-stone-600 font-medium bg-transparent border-none outline-none w-full hover:bg-white/10 focus:bg-white/10 rounded px-1 py-0.5 -mx-1 -my-0.5"
-                      placeholder="Add location..."
-                    />
-                  </div>
+                  <LocationAutocomplete
+                    value={editLocation}
+                    onChange={onSetEditLocation}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        onCancelEdit();
+                      }
+                    }}
+                    className="text-xs text-stone-600 font-medium bg-transparent border-none outline-none w-full hover:bg-white/10 focus:bg-white/10 rounded px-1 py-0.5 -mx-1 -my-0.5"
+                    placeholder="Add location..."
+                  />
                 </div>
 
                 {/* Edit Mode - Participants */}
