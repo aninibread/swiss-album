@@ -117,8 +117,8 @@ export function MediaGallery({
                         title={`Uploaded by ${photo.uploader.name}`}
                       />
                     </div>
-                    {canDeleteMedia(photo, currentUserId) && (
-                      <div className="absolute top-2 right-10 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm bg-white/20 backdrop-blur-sm">
+                    {isEditMode && canDeleteMedia(photo, currentUserId) && (
+                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm bg-white/20 backdrop-blur-sm">
                         <button
                           onClick={createDeleteClickHandler(photo.url, onDeleteMedia, dayId, eventId)}
                           className="w-full h-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-colors"
@@ -172,8 +172,8 @@ export function MediaGallery({
                         title={`Uploaded by ${video.uploader.name}`}
                       />
                     </div>
-                    {canDeleteMedia(video, currentUserId) && (
-                      <div className="absolute top-2 right-10 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm bg-white/20 backdrop-blur-sm">
+                    {isEditMode && canDeleteMedia(video, currentUserId) && (
+                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white/80 shadow-sm bg-white/20 backdrop-blur-sm">
                         <button
                           onClick={createDeleteClickHandler(video.url, onDeleteMedia, dayId, eventId)}
                           className="w-full h-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-colors"

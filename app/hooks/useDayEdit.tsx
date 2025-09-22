@@ -94,7 +94,7 @@ export function useDayEdit(options: UseDayEditOptions) {
         id: result.dayId,
         date: today,
         title: 'New Day',
-        heroPhoto: "https://picsum.photos/800/600?random=" + Math.floor(Math.random() * 1000),
+        heroPhoto: "https://picsum.photos/800/600?random=" + Math.floor(Date.now() % 1000),
         photoCount: 0,
         backgroundColor: "bg-blue-100",
         participants: allParticipants,
